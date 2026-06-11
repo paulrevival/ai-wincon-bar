@@ -120,7 +120,14 @@ export async function runSetup(
   }
 
   // 5. Install skill
-  installSkill();
+  const shouldInstallSkill = await confirm({
+    message: "Install /ai-wincon-bar skill? This lets you configure the bar from within Claude Code.",
+    default: true,
+  });
+
+  if (shouldInstallSkill) {
+    installSkill();
+  }
 
   console.log("\n🎉 Done! Restart Claude Code to see the status bar.\n");
 }
