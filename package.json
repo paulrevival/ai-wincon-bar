@@ -1,0 +1,48 @@
+{
+  "name": "@paulrevival/ai-wincon-bar",
+  "version": "0.1.0",
+  "description": "Context window usage bar for Claude Code status line",
+  "type": "module",
+  "bin": {
+    "ai-wincon-bar": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@inquirer/checkbox": "^5.2.1",
+    "@inquirer/confirm": "^6.1.1",
+    "@inquirer/number": "^4.1.1",
+    "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.1"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "statusline",
+    "context-window",
+    "ai"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulrevival/ai-wincon-bar.git"
+  },
+  "homepage": "https://github.com/paulrevival/ai-wincon-bar"
+}
