@@ -1,10 +1,21 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { DEFAULT_CONFIG, CACHE_TTL_MS } from "../src/constants.js";
-import type { CacheEntry } from "../src/constants.js";
-import type { ClaudeStatusInput } from "../src/types.js";
+import {
+  loadConfig,
+  saveConfig,
+  readCache,
+  writeCache,
+  clearCache,
+  isConfigured,
+  getCachePath,
+  getConfigPath,
+  getSettingsPath,
+  updateSettingsStatusLine,
+} from "../src/config.js";
+import { DEFAULT_CONFIG } from "../src/constants.js";
+import type { ClaudeStatusInput, WinconBarConfig } from "../src/types.js";
 
 const TMP_DIR = join(tmpdir(), "ai-wincon-bar-test-" + process.pid);
 
@@ -20,126 +31,205 @@ function makeInput(usedPct: number, tokens = 90_000): ClaudeStatusInput {
   };
 }
 
-describe("cache TTL", () => {
-  const testCachePath = join(TMP_DIR, "cache-test.json");
+beforeEach(() => {
+  mkdirSync(TMP_DIR, { recursive: true });
+  process.env.AI_WINCON_BAR_DIR = TMP_DIR;
+});
 
-  beforeEach(() => {
-    mkdirSync(TMP_DIR, { recursive: true });
+afterEach(() => {
+  rmSync(TMP_DIR, { recursive: true, force: true });
+  delete process.env.AI_WINCON_BAR_DIR;
+});
+
+// ─── Path helpers ────────────────────────────────────────
+
+describe("path helpers", () => {
+  it("getConfigPath points to claude dir", () => {
+    expect(getConfigPath()).toBe(join(TMP_DIR, "ai-wincon-bar.json"));
   });
 
-  afterEach(() => {
-    rmSync(TMP_DIR, { recursive: true, force: true });
+  it("getCachePath points to claude dir", () => {
+    expect(getCachePath()).toBe(join(TMP_DIR, "ai-wincon-bar-cache.json"));
   });
 
-  it("fresh cache entry is within TTL", () => {
-    const entry: CacheEntry = { data: makeInput(50), ts: Date.now() };
-    writeFileSync(testCachePath, JSON.stringify(entry), "utf-8");
-
-    const raw = JSON.parse(readFileSync(testCachePath, "utf-8")) as CacheEntry;
-    const age = Date.now() - raw.ts;
-    expect(age).toBeLessThan(CACHE_TTL_MS);
-  });
-
-  it("old cache entry exceeds TTL", () => {
-    const entry: CacheEntry = {
-      data: makeInput(50),
-      ts: Date.now() - CACHE_TTL_MS - 1000,
-    };
-    writeFileSync(testCachePath, JSON.stringify(entry), "utf-8");
-
-    const raw = JSON.parse(readFileSync(testCachePath, "utf-8")) as CacheEntry;
-    expect(Date.now() - raw.ts > CACHE_TTL_MS).toBe(true);
-  });
-
-  it("zero used_percentage is treated as no valid cache", () => {
-    const entry: CacheEntry = { data: makeInput(0), ts: Date.now() };
-    const data = entry.data as ClaudeStatusInput;
-    expect(data.context_window.used_percentage > 0).toBe(false);
-  });
-
-  it("entry exactly at TTL boundary is considered expired", () => {
-    const entry: CacheEntry = {
-      data: makeInput(50),
-      ts: Date.now() - CACHE_TTL_MS,
-    };
-    // At exact boundary: Date.now() - entry.ts === CACHE_TTL_MS → expired (> not >=)
-    const age = Date.now() - entry.ts;
-    expect(age >= CACHE_TTL_MS).toBe(true);
+  it("getSettingsPath points to settings.json", () => {
+    expect(getSettingsPath()).toBe(join(TMP_DIR, "settings.json"));
   });
 });
 
-describe("loadConfig merge logic", () => {
-  const testConfigPath = join(TMP_DIR, "test-config.json");
+// ─── loadConfig / saveConfig ─────────────────────────────
 
-  beforeEach(() => {
-    mkdirSync(TMP_DIR, { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(TMP_DIR, { recursive: true, force: true });
-  });
-
-  it("merges partial config with defaults", () => {
-    const partial = { thresholds: { yellow: 30, red: 70 } };
-    writeFileSync(testConfigPath, JSON.stringify(partial), "utf-8");
-
-    const raw = readFileSync(testConfigPath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<typeof DEFAULT_CONFIG>;
-    const merged = {
-      elements: { ...DEFAULT_CONFIG.elements, ...parsed.elements },
-      thresholds: { ...DEFAULT_CONFIG.thresholds, ...parsed.thresholds },
-    };
-
-    expect(merged.thresholds.yellow).toBe(30);
-    expect(merged.thresholds.red).toBe(70);
-    expect(merged.elements.progressBar).toBe(true);
-    expect(merged.elements.tokens).toBe(true);
-  });
-
-  it("merges partial elements", () => {
-    const partial = { elements: { tokens: false } };
-    writeFileSync(testConfigPath, JSON.stringify(partial), "utf-8");
-
-    const raw = readFileSync(testConfigPath, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<typeof DEFAULT_CONFIG>;
-    const merged = {
-      elements: { ...DEFAULT_CONFIG.elements, ...parsed.elements },
-      thresholds: { ...DEFAULT_CONFIG.thresholds, ...parsed.thresholds },
-    };
-
-    expect(merged.elements.tokens).toBe(false);
-    expect(merged.elements.progressBar).toBe(true);
-    expect(merged.thresholds.yellow).toBe(50);
+describe("loadConfig", () => {
+  it("returns defaults when no config file exists", () => {
+    expect(loadConfig()).toEqual(DEFAULT_CONFIG);
   });
 
   it("returns defaults for malformed JSON", () => {
-    writeFileSync(testConfigPath, "not valid json{{{" , "utf-8");
+    writeFileSync(getConfigPath(), "not valid json{{{", "utf-8");
+    expect(loadConfig()).toEqual(DEFAULT_CONFIG);
+  });
 
-    let merged: typeof DEFAULT_CONFIG = DEFAULT_CONFIG;
-    try {
-      const raw = readFileSync(testConfigPath, "utf-8");
-      const parsed = JSON.parse(raw);
-      merged = {
-        elements: { ...DEFAULT_CONFIG.elements, ...parsed.elements },
-        thresholds: { ...DEFAULT_CONFIG.thresholds, ...parsed.thresholds },
-      };
-    } catch {
-      merged = { ...DEFAULT_CONFIG };
-    }
+  it("returns defaults for empty file", () => {
+    writeFileSync(getConfigPath(), "", "utf-8");
+    expect(loadConfig()).toEqual(DEFAULT_CONFIG);
+  });
 
-    expect(merged).toEqual(DEFAULT_CONFIG);
+  it("merges partial thresholds with defaults", () => {
+    writeFileSync(
+      getConfigPath(),
+      JSON.stringify({ thresholds: { yellow: 30, red: 70 } }),
+      "utf-8",
+    );
+    const config = loadConfig();
+    expect(config.thresholds).toEqual({ yellow: 30, red: 70 });
+    expect(config.elements).toEqual(DEFAULT_CONFIG.elements);
+  });
+
+  it("merges partial elements with defaults", () => {
+    writeFileSync(
+      getConfigPath(),
+      JSON.stringify({ elements: { tokens: false } }),
+      "utf-8",
+    );
+    const config = loadConfig();
+    expect(config.elements.tokens).toBe(false);
+    expect(config.elements.progressBar).toBe(true);
+    expect(config.thresholds).toEqual(DEFAULT_CONFIG.thresholds);
   });
 
   it("handles empty object", () => {
-    writeFileSync(testConfigPath, "{}", "utf-8");
+    writeFileSync(getConfigPath(), "{}", "utf-8");
+    expect(loadConfig()).toEqual(DEFAULT_CONFIG);
+  });
+});
 
-    const raw = readFileSync(testConfigPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    const merged = {
-      elements: { ...DEFAULT_CONFIG.elements, ...parsed.elements },
-      thresholds: { ...DEFAULT_CONFIG.thresholds, ...parsed.thresholds },
+describe("saveConfig + loadConfig round-trip", () => {
+  it("saves and loads config correctly", () => {
+    const config: WinconBarConfig = {
+      elements: { progressBar: false, percent: true, tokens: true, tariff: false },
+      thresholds: { yellow: 25, red: 60 },
     };
+    saveConfig(config);
+    expect(loadConfig()).toEqual(config);
+  });
 
-    expect(merged).toEqual(DEFAULT_CONFIG);
+  it("writes valid JSON with 2-space indent", () => {
+    saveConfig(DEFAULT_CONFIG);
+    const raw = readFileSync(getConfigPath(), "utf-8");
+    expect(raw).toBe(JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n");
+  });
+});
+
+// ─── isConfigured ────────────────────────────────────────
+
+describe("isConfigured", () => {
+  it("returns false when no config file", () => {
+    expect(isConfigured()).toBe(false);
+  });
+
+  it("returns true when config file exists", () => {
+    saveConfig(DEFAULT_CONFIG);
+    expect(isConfigured()).toBe(true);
+  });
+});
+
+// ─── Cache: writeCache / readCache / clearCache ──────────
+
+describe("writeCache + readCache", () => {
+  it("returns null when no cache file exists", () => {
+    expect(readCache()).toBeNull();
+  });
+
+  it("returns null for malformed cache", () => {
+    writeFileSync(getCachePath(), "garbage", "utf-8");
+    expect(readCache()).toBeNull();
+  });
+
+  it("returns data for fresh cache", () => {
+    const input = makeInput(42);
+    writeCache(input);
+    const cached = readCache();
+    expect(cached).not.toBeNull();
+    expect(cached!.context_window.used_percentage).toBe(42);
+    expect(cached!.context_window.total_input_tokens).toBe(90_000);
+  });
+
+  it("returns null for expired cache", () => {
+    // Write a cache entry with old timestamp
+    const entry = { data: makeInput(50), ts: Date.now() - 11_000 };
+    writeFileSync(getCachePath(), JSON.stringify(entry), "utf-8");
+    expect(readCache()).toBeNull();
+  });
+
+  it("returns null for cache with used_percentage = 0", () => {
+    const input = makeInput(0, 0);
+    writeCache(input);
+    // Even though cache is fresh, zero percentage → null
+    expect(readCache()).toBeNull();
+  });
+
+  it("preserves full context_window data", () => {
+    const input = makeInput(75, 200_000);
+    writeCache(input);
+    const cached = readCache()!;
+    expect(cached.context_window.total_input_tokens).toBe(200_000);
+    expect(cached.context_window.context_window_size).toBe(1_000_000);
+  });
+});
+
+describe("clearCache", () => {
+  it("removes cache file", () => {
+    writeCache(makeInput(50));
+    expect(existsSync(getCachePath())).toBe(true);
+    clearCache();
+    expect(existsSync(getCachePath())).toBe(false);
+  });
+
+  it("does not throw when no cache file", () => {
+    expect(() => clearCache()).not.toThrow();
+  });
+});
+
+// ─── updateSettingsStatusLine ────────────────────────────
+
+describe("updateSettingsStatusLine", () => {
+  it("creates settings.json with statusLine when no file exists", () => {
+    updateSettingsStatusLine();
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.statusLine).toEqual({
+      type: "command",
+      command: "ai-wincon-bar",
+    });
+  });
+
+  it("preserves existing settings when updating", () => {
+    const existing = { someOtherKey: "value", nested: { a: 1 } };
+    writeFileSync(getSettingsPath(), JSON.stringify(existing), "utf-8");
+    updateSettingsStatusLine();
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.someOtherKey).toBe("value");
+    expect(settings.nested).toEqual({ a: 1 });
+    expect(settings.statusLine).toEqual({
+      type: "command",
+      command: "ai-wincon-bar",
+    });
+  });
+
+  it("overwrites existing statusLine", () => {
+    const existing = { statusLine: { type: "command", command: "old-command" } };
+    writeFileSync(getSettingsPath(), JSON.stringify(existing), "utf-8");
+    updateSettingsStatusLine();
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.statusLine.command).toBe("ai-wincon-bar");
+  });
+
+  it("replaces malformed settings.json", () => {
+    writeFileSync(getSettingsPath(), "not json{{{", "utf-8");
+    updateSettingsStatusLine();
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.statusLine).toEqual({
+      type: "command",
+      command: "ai-wincon-bar",
+    });
   });
 });

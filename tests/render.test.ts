@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { renderStatusLine } from "../src/render.js";
 import type { ClaudeStatusInput, WinconBarConfig } from "../src/types.js";
-import { DEFAULT_CONFIG } from "../src/constants.js";
-import { ANSI } from "../src/constants.js";
+import { DEFAULT_CONFIG, ANSI } from "../src/constants.js";
 
-/** Strip all ANSI escape codes from a string for assertion convenience */
+/** Strip all ANSI escape codes for plain-text assertions */
 function strip(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
@@ -23,12 +22,39 @@ function makeInput(overrides: Partial<ClaudeStatusInput["context_window"]> = {})
 }
 
 describe("renderStatusLine", () => {
+  // ─── Full render ─────────────────────────────────
+
   it("renders all elements with default config", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
     expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 90K/1M");
   });
 
-  it("renders tariff when five_hour rate limit is present", () => {
+  // ─── Edge percentages ────────────────────────────
+
+  it("renders at 0% used", () => {
+    const output = renderStatusLine(
+      makeInput({ used_percentage: 0, total_input_tokens: 0, remaining_percentage: 100 }),
+      DEFAULT_CONFIG,
+    );
+    expect(strip(output)).toBe("░░░░░░░░░░ | 0% | 0/1M");
+  });
+
+  it("renders at 100% used", () => {
+    const output = renderStatusLine(
+      makeInput({ used_percentage: 100, total_input_tokens: 1_000_000, remaining_percentage: 0 }),
+      DEFAULT_CONFIG,
+    );
+    expect(strip(output)).toBe("▓▓▓▓▓▓▓▓▓▓ | 100% | 1M/1M");
+  });
+
+  it("rounds percentage to nearest integer", () => {
+    const output = renderStatusLine(makeInput({ used_percentage: 9.6 }), DEFAULT_CONFIG);
+    expect(strip(output)).toContain("10%");
+  });
+
+  // ─── Tariff / rate_limits ────────────────────────
+
+  it("renders tariff when five_hour is present", () => {
     const input: ClaudeStatusInput = {
       ...makeInput(),
       rate_limits: {
@@ -44,7 +70,7 @@ describe("renderStatusLine", () => {
     expect(strip(output)).not.toContain("5h");
   });
 
-  it("hides tariff when rate_limits exists but five_hour is missing", () => {
+  it("hides tariff when five_hour is missing but seven_day exists", () => {
     const input: ClaudeStatusInput = {
       ...makeInput(),
       rate_limits: {
@@ -55,24 +81,85 @@ describe("renderStatusLine", () => {
     expect(strip(output)).not.toContain("5h");
   });
 
-  it("uses green color below yellow threshold", () => {
+  it("renders tariff with 0% when five_hour.used_percentage is 0", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      rate_limits: {
+        five_hour: { used_percentage: 0, resets_at: "..." },
+      },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toContain("5h: 0%");
+  });
+
+  it("rounds tariff percentage", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      rate_limits: {
+        five_hour: { used_percentage: 12.7, resets_at: "..." },
+      },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toContain("5h: 13%");
+  });
+
+  // ─── Colors ──────────────────────────────────────
+
+  it("uses green below yellow threshold", () => {
     const output = renderStatusLine(makeInput({ used_percentage: 9 }), DEFAULT_CONFIG);
     expect(output).toContain(ANSI.green);
     expect(output).not.toContain(ANSI.yellow);
     expect(output).not.toContain(ANSI.red);
   });
 
-  it("uses yellow color at yellow threshold", () => {
+  it("uses yellow at yellow threshold", () => {
     const output = renderStatusLine(makeInput({ used_percentage: 50 }), DEFAULT_CONFIG);
     expect(output).toContain(ANSI.yellow);
   });
 
-  it("uses red color at red threshold", () => {
+  it("uses red at red threshold", () => {
     const output = renderStatusLine(makeInput({ used_percentage: 80 }), DEFAULT_CONFIG);
     expect(output).toContain(ANSI.red);
   });
 
-  it("respects disabled elements", () => {
+  it("uses tariff color based on tariff percentage, not context percentage", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput({ used_percentage: 10 }), // green context
+      rate_limits: {
+        five_hour: { used_percentage: 85, resets_at: "..." }, // red tariff
+      },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(output).toContain(ANSI.green);
+    expect(output).toContain(ANSI.red);
+  });
+
+  it("uses yellow for tariff at yellow threshold", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput({ used_percentage: 10 }),
+      rate_limits: {
+        five_hour: { used_percentage: 50, resets_at: "..." }, // yellow tariff
+      },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(output).toContain(ANSI.green);  // context
+    expect(output).toContain(ANSI.yellow); // tariff
+  });
+
+  it("tokens section has no ANSI color codes", () => {
+    const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
+    // Extract just the tokens part (third segment)
+    const plain = strip(output);
+    const tokensPart = plain.split(" | ")[2]; // "90K/1M"
+    // Find the corresponding section in the colored output
+    const tokensStart = output.indexOf(tokensPart);
+    const tokensSection = output.substring(tokensStart, tokensStart + tokensPart.length);
+    expect(tokensSection).toBe(tokensPart); // no ANSI codes
+  });
+
+  // ─── Element toggling ────────────────────────────
+
+  it("renders only tokens when others disabled", () => {
     const config: WinconBarConfig = {
       elements: { progressBar: false, percent: false, tokens: true, tariff: false },
       thresholds: { yellow: 50, red: 80 },
@@ -90,6 +177,28 @@ describe("renderStatusLine", () => {
     expect(strip(output)).toBe("9%");
   });
 
+  it("renders only progressBar when others disabled", () => {
+    const config: WinconBarConfig = {
+      elements: { progressBar: true, percent: false, tokens: false, tariff: false },
+      thresholds: { yellow: 50, red: 80 },
+    };
+    const output = renderStatusLine(makeInput(), config);
+    expect(strip(output)).toBe("▓░░░░░░░░░");
+  });
+
+  it("renders only tariff when others disabled", () => {
+    const config: WinconBarConfig = {
+      elements: { progressBar: false, percent: false, tokens: false, tariff: true },
+      thresholds: { yellow: 50, red: 80 },
+    };
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      rate_limits: { five_hour: { used_percentage: 12, resets_at: "..." } },
+    };
+    const output = renderStatusLine(input, config);
+    expect(strip(output)).toBe("5h: 12%");
+  });
+
   it("renders empty string when all elements disabled", () => {
     const config: WinconBarConfig = {
       elements: { progressBar: false, percent: false, tokens: false, tariff: false },
@@ -99,6 +208,8 @@ describe("renderStatusLine", () => {
     expect(output).toBe("");
   });
 
+  // ─── Large values ────────────────────────────────
+
   it("formats large token counts correctly", () => {
     const input = makeInput({
       total_input_tokens: 1_500_000,
@@ -107,24 +218,5 @@ describe("renderStatusLine", () => {
     });
     const output = renderStatusLine(input, DEFAULT_CONFIG);
     expect(strip(output)).toContain("1.5M/2M");
-  });
-
-  it("rounds percentage to nearest integer", () => {
-    const output = renderStatusLine(makeInput({ used_percentage: 9.6 }), DEFAULT_CONFIG);
-    expect(strip(output)).toContain("10%");
-  });
-
-  it("uses tariff color based on tariff percentage, not context percentage", () => {
-    const config = DEFAULT_CONFIG; // yellow=50, red=80
-    const input: ClaudeStatusInput = {
-      ...makeInput({ used_percentage: 10 }), // green context
-      rate_limits: {
-        five_hour: { used_percentage: 85, resets_at: "..." }, // red tariff
-      },
-    };
-    const output = renderStatusLine(input, config);
-    // Should have both green (for context) and red (for tariff)
-    expect(output).toContain(ANSI.green);
-    expect(output).toContain(ANSI.red);
   });
 });

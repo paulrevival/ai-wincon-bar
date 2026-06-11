@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
 import type { CacheEntry } from "./constants.js";
 
 function getClaudeDir(): string {
-  return join(homedir(), ".claude");
+  return process.env.AI_WINCON_BAR_DIR ?? join(homedir(), ".claude");
 }
 
 export function getConfigPath(): string {

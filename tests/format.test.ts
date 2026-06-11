@@ -9,16 +9,26 @@ describe("formatTokens", () => {
     expect(formatTokens(999)).toBe("999");
   });
 
-  it("formats thousands as XK", () => {
+  it("formats thousands as XK (rounded)", () => {
     expect(formatTokens(1_000)).toBe("1K");
     expect(formatTokens(90_000)).toBe("90K");
     expect(formatTokens(999_999)).toBe("1000K");
   });
 
-  it("formats millions as X.XM", () => {
-    expect(formatTokens(1_000_000)).toBe("1M");
+  it("rounds fractional thousands", () => {
+    expect(formatTokens(1_500)).toBe("2K");    // 1.5 → rounds to 2
+    expect(formatTokens(1_400)).toBe("1K");    // 1.4 → rounds to 1
+  });
+
+  it("formats millions as XM or X.XM", () => {
+    expect(formatTokens(1_000_000)).toBe("1M");     // .0 stripped
     expect(formatTokens(1_500_000)).toBe("1.5M");
     expect(formatTokens(2_300_000)).toBe("2.3M");
+    expect(formatTokens(10_000_000)).toBe("10M");   // .0 stripped
+  });
+
+  it("does not format negative values as K/M (not expected in practice)", () => {
+    expect(formatTokens(-1000)).toBe("-1000");
   });
 });
 
@@ -38,6 +48,13 @@ describe("getColorForPercentage", () => {
   it("returns red at and above red threshold", () => {
     expect(getColorForPercentage(80, thresholds)).toBe(ANSI.red);
     expect(getColorForPercentage(100, thresholds)).toBe(ANSI.red);
+  });
+
+  it("works with custom thresholds", () => {
+    const tight = { yellow: 10, red: 20 };
+    expect(getColorForPercentage(5, tight)).toBe(ANSI.green);
+    expect(getColorForPercentage(10, tight)).toBe(ANSI.yellow);
+    expect(getColorForPercentage(20, tight)).toBe(ANSI.red);
   });
 });
 
@@ -71,5 +88,12 @@ describe("renderBar", () => {
     expect(renderBar(14)).toBe("▓░░░░░░░░░");
     // 15% of 10 = 1.5 → rounds to 2
     expect(renderBar(15)).toBe("▓▓░░░░░░░░");
+  });
+
+  it("renders single-character bar", () => {
+    expect(renderBar(0, 1)).toBe("░");
+    expect(renderBar(100, 1)).toBe("▓");
+    expect(renderBar(49, 1)).toBe("░");
+    expect(renderBar(50, 1)).toBe("▓");
   });
 });
