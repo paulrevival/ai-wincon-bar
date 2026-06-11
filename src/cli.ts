@@ -1,6 +1,9 @@
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { runSetup } from "./setup.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, clearCache } from "./config.js";
+
+const pkg = createRequire(import.meta.url)("../package.json");
 
 export function createProgram(): Command {
   const program = new Command();
@@ -8,19 +11,22 @@ export function createProgram(): Command {
   program
     .name("ai-wincon-bar")
     .description("Context window usage bar for Claude Code status line")
-    .version("0.1.0");
-
-  program
-    .command("setup")
-    .description("Interactive setup: configure elements, thresholds, install to Claude Code")
-    .action(() => runSetup());
+    .version(pkg.version);
 
   program
     .command("config")
-    .description("Modify existing settings interactively")
+    .description("Interactively configure elements, thresholds, and status line integration")
     .action(() => {
       const config = loadConfig();
       return runSetup(config);
+    });
+
+  program
+    .command("clear")
+    .description("Clear the status data cache")
+    .action(() => {
+      clearCache();
+      console.log("✅ Cache cleared.");
     });
 
   return program;

@@ -1,8 +1,10 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
-import { DEFAULT_CONFIG, CONFIG_FILENAME } from "./constants.js";
+import type { ClaudeStatusInput } from "./types.js";
+import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
+import type { CacheEntry } from "./constants.js";
 
 function getClaudeDir(): string {
   return join(homedir(), ".claude");
@@ -12,8 +14,55 @@ export function getConfigPath(): string {
   return join(getClaudeDir(), CONFIG_FILENAME);
 }
 
+export function getCachePath(): string {
+  return join(getClaudeDir(), "ai-wincon-bar-cache.json");
+}
+
 export function getSettingsPath(): string {
   return join(getClaudeDir(), "settings.json");
+}
+
+/**
+ * Read cached status data if it exists and is not expired.
+ * Returns null if no cache or cache is stale.
+ */
+export function readCache(): ClaudeStatusInput | null {
+  const cachePath = getCachePath();
+  if (!existsSync(cachePath)) return null;
+  try {
+    const raw = readFileSync(cachePath, "utf-8");
+    const entry: CacheEntry = JSON.parse(raw);
+    if (Date.now() - entry.ts > CACHE_TTL_MS) return null;
+    const data = entry.data as ClaudeStatusInput;
+    if (data.context_window?.used_percentage > 0) return data;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write current status data to cache with timestamp.
+ */
+export function writeCache(data: ClaudeStatusInput): void {
+  try {
+    const entry: CacheEntry = { data, ts: Date.now() };
+    writeFileSync(getCachePath(), JSON.stringify(entry), "utf-8");
+  } catch {
+    // Cache write failure is non-critical
+  }
+}
+
+/**
+ * Remove the cache file.
+ */
+export function clearCache(): void {
+  try {
+    const cachePath = getCachePath();
+    if (existsSync(cachePath)) unlinkSync(cachePath);
+  } catch {
+    // Non-critical
+  }
 }
 
 /**

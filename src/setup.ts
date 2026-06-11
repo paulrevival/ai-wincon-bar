@@ -1,9 +1,9 @@
 import checkbox from "@inquirer/checkbox";
 import confirm from "@inquirer/confirm";
-import input from "@inquirer/number";
+import inputNum from "@inquirer/number";
 import type { WinconBarConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./constants.js";
-import { saveConfig, updateSettingsStatusLine, loadConfig } from "./config.js";
+import { saveConfig, updateSettingsStatusLine, loadConfig, clearCache } from "./config.js";
 
 const ELEMENT_CHOICES = [
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
@@ -17,7 +17,7 @@ export async function runSetup(
 ): Promise<void> {
   const config = existingConfig ?? loadConfig();
 
-  console.log("\n🪟 ai-wincon-bar setup\n");
+  console.log("\n🪟 ai-wincon-bar config\n");
 
   // 1. Select elements
   const selectedElements = await checkbox({
@@ -29,31 +29,41 @@ export async function runSetup(
     })),
   });
 
-  // 2. Yellow threshold
-  const yellow = await input({
-    message: "Yellow threshold (percentage):",
-    default: config.thresholds.yellow,
-    min: 0,
-    max: 100,
-  });
+  // 2. Thresholds — loop until valid
+  let yellow: number | undefined;
+  let red: number | undefined;
 
-  // 3. Red threshold
-  const red = await input({
-    message: "Red threshold (percentage):",
-    default: config.thresholds.red,
-    min: 0,
-    max: 100,
-  });
+  while (true) {
+    yellow = await inputNum({
+      message: "Yellow threshold (percentage):",
+      default: config.thresholds.yellow,
+      min: 0,
+      max: 100,
+    });
 
-  // 4. Validate
-  if (yellow! >= red!) {
-    console.error(
-      "\n❌ Yellow threshold must be less than red threshold. Please try again.",
-    );
-    return runSetup(config);
+    red = await inputNum({
+      message: "Red threshold (percentage):",
+      default: config.thresholds.red,
+      min: 0,
+      max: 100,
+    });
+
+    if (yellow == null || red == null) {
+      console.error("\n❌ Setup cancelled.");
+      return;
+    }
+
+    if (yellow >= red) {
+      console.error(
+        "\n❌ Yellow threshold must be less than red threshold.\n",
+      );
+      continue;
+    }
+
+    break;
   }
 
-  // 5. Build and save config
+  // 3. Build and save config
   const newConfig: WinconBarConfig = {
     elements: {
       progressBar: selectedElements.includes("progressBar"),
@@ -61,13 +71,14 @@ export async function runSetup(
       tokens: selectedElements.includes("tokens"),
       tariff: selectedElements.includes("tariff"),
     },
-    thresholds: { yellow: yellow!, red: red! },
+    thresholds: { yellow, red },
   };
 
   saveConfig(newConfig);
+  clearCache();
   console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar.json`);
 
-  // 6. Update settings.json
+  // 4. Update settings.json
   const shouldUpdateSettings = await confirm({
     message: "Update ~/.claude/settings.json to enable the status line?",
     default: true,
