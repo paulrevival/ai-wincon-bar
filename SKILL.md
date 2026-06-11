@@ -23,6 +23,7 @@ Context window usage bar for Claude Code's status line.
 ```json
 {
   "elements": {
+    "modelName": true,
     "progressBar": true,
     "percent": true,
     "tokens": true,
@@ -38,6 +39,7 @@ Context window usage bar for Claude Code's status line.
 ## What each setting does
 
 **Elements** — toggle which parts of the status line appear:
+- `modelName` — model name like `[Sonnet 4.6]` (hidden automatically when not available)
 - `progressBar` — visual bar `▓▓▓░░░`
 - `percent` — number like `45%`
 - `tokens` — total (input + output) tokens like `95K/200K`
@@ -58,7 +60,7 @@ When the user invokes this skill, determine what they want and perform the actio
 2. Display current settings in a readable format
 3. Show a preview by constructing sample output:
    ```
-   ▓▓▓▓▓░░░░░ 45% | 95K/200K | 5h: 12%
+   [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | 95K/200K | 5h: 12%
    ```
 
 ### Modify config

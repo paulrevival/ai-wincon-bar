@@ -2,6 +2,7 @@ import type { WinconBarConfig } from "./types.js";
 
 export const DEFAULT_CONFIG: WinconBarConfig = {
   elements: {
+    modelName: true,
     progressBar: true,
     percent: true,
     tokens: true,

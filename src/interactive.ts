@@ -25,6 +25,7 @@ export async function handleInteractive(): Promise<void> {
         used_percentage: 45,
         remaining_percentage: 55,
       },
+      model: { id: "claude-sonnet-4-6", display_name: "Sonnet 4.6" },
     };
     console.log("\nPreview:");
     console.log(renderStatusLine(sampleInput, config));

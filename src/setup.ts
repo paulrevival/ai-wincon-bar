@@ -10,6 +10,7 @@ import { DEFAULT_CONFIG } from "./constants.js";
 import { saveConfig, updateSettingsStatusLine, loadConfig, clearCache } from "./config.js";
 
 const ELEMENT_CHOICES = [
+  { name: "Model name ([glm-5.1])", value: "modelName" },
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
   { name: "Percentage (45%)", value: "percent" },
   { name: "Tokens (95K/200K)", value: "tokens" },
@@ -96,6 +97,7 @@ export async function runSetup(
   // 3. Build and save config
   const newConfig: WinconBarConfig = {
     elements: {
+      modelName: selectedElements.includes("modelName"),
       progressBar: selectedElements.includes("progressBar"),
       percent: selectedElements.includes("percent"),
       tokens: selectedElements.includes("tokens"),

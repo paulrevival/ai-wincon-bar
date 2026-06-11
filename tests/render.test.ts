@@ -18,6 +18,7 @@ function makeInput(overrides: Partial<ClaudeStatusInput["context_window"]> = {})
       remaining_percentage: 91,
       ...overrides,
     },
+    model: { id: "glm-5.1", display_name: "glm-5.1" },
   };
 }
 
@@ -27,7 +28,63 @@ describe("renderStatusLine", () => {
   it("renders all elements with default config", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
     // 90K input + 5K output = 95K total
+    expect(strip(output)).toBe("[glm-5.1] | ▓░░░░░░░░░ | 9% | 95K/1M");
+  });
+
+  // ─── Model name ──────────────────────────────────
+
+  it("renders model name from display_name", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      model: { id: "claude-opus-4-8", display_name: "Opus 4.8" },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toContain("[Opus 4.8]");
+  });
+
+  it("falls back to model id when display_name is absent", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      model: { id: "claude-sonnet-4-6" },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toContain("[claude-sonnet-4-6]");
+  });
+
+  it("hides model name when element disabled", () => {
+    const config: WinconBarConfig = {
+      elements: { modelName: false, progressBar: true, percent: true, tokens: true, tariff: false },
+      thresholds: { yellow: 50, red: 80 },
+    };
+    const output = renderStatusLine(makeInput(), config);
     expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
+  });
+
+  it("hides model name when model field is missing", () => {
+    const input: ClaudeStatusInput = {
+      context_window: makeInput().context_window,
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
+  });
+
+  it("hides model name when display_name and id are empty", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      model: { id: "", display_name: "" },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).not.toContain("[]");
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
+  });
+
+  it("renders only model name when others disabled", () => {
+    const config: WinconBarConfig = {
+      elements: { modelName: true, progressBar: false, percent: false, tokens: false, tariff: false },
+      thresholds: { yellow: 50, red: 80 },
+    };
+    const output = renderStatusLine(makeInput(), config);
+    expect(strip(output)).toBe("[glm-5.1]");
   });
 
   // ─── Edge percentages ────────────────────────────
@@ -37,7 +94,7 @@ describe("renderStatusLine", () => {
       makeInput({ used_percentage: 0, total_input_tokens: 0, total_output_tokens: 0, remaining_percentage: 100 }),
       DEFAULT_CONFIG,
     );
-    expect(strip(output)).toBe("░░░░░░░░░░ | 0% | 0/1M");
+    expect(strip(output)).toBe("[glm-5.1] | ░░░░░░░░░░ | 0% | 0/1M");
   });
 
   it("renders at 100% used", () => {
@@ -45,7 +102,7 @@ describe("renderStatusLine", () => {
       makeInput({ used_percentage: 100, total_input_tokens: 999_000, total_output_tokens: 1_000, remaining_percentage: 0 }),
       DEFAULT_CONFIG,
     );
-    expect(strip(output)).toBe("▓▓▓▓▓▓▓▓▓▓ | 100% | 1M/1M");
+    expect(strip(output)).toBe("[glm-5.1] | ▓▓▓▓▓▓▓▓▓▓ | 100% | 1M/1M");
   });
 
   it("rounds percentage to nearest integer", () => {
@@ -64,7 +121,7 @@ describe("renderStatusLine", () => {
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
     // 90K input + 5K output = 95K total
-    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M | 5h: 12%");
+    expect(strip(output)).toBe("[glm-5.1] | ▓░░░░░░░░░ | 9% | 95K/1M | 5h: 12%");
   });
 
   it("hides tariff when rate_limits absent", () => {
@@ -150,9 +207,9 @@ describe("renderStatusLine", () => {
 
   it("tokens section has no ANSI color codes", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
-    // Extract just the tokens part (third segment)
+    // Extract just the tokens part — [model] | bar | percent | tokens
     const plain = strip(output);
-    const tokensPart = plain.split(" | ")[2]; // "95K/1M"
+    const tokensPart = plain.split(" | ")[3]; // "95K/1M"
     // Find the corresponding section in the colored output
     const tokensStart = output.indexOf(tokensPart);
     const tokensSection = output.substring(tokensStart, tokensStart + tokensPart.length);
@@ -163,7 +220,7 @@ describe("renderStatusLine", () => {
 
   it("renders only tokens when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { progressBar: false, percent: false, tokens: true, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: false, tokens: true, tariff: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -173,7 +230,7 @@ describe("renderStatusLine", () => {
 
   it("renders only percent when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { progressBar: false, percent: true, tokens: false, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: true, tokens: false, tariff: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -182,7 +239,7 @@ describe("renderStatusLine", () => {
 
   it("renders only progressBar when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { progressBar: true, percent: false, tokens: false, tariff: false },
+      elements: { modelName: false, progressBar: true, percent: false, tokens: false, tariff: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -191,7 +248,7 @@ describe("renderStatusLine", () => {
 
   it("renders only tariff when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { progressBar: false, percent: false, tokens: false, tariff: true },
+      elements: { modelName: false, progressBar: false, percent: false, tokens: false, tariff: true },
       thresholds: { yellow: 50, red: 80 },
     };
     const input: ClaudeStatusInput = {
@@ -204,7 +261,7 @@ describe("renderStatusLine", () => {
 
   it("renders empty string when all elements disabled", () => {
     const config: WinconBarConfig = {
-      elements: { progressBar: false, percent: false, tokens: false, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: false, tokens: false, tariff: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);

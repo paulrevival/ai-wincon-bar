@@ -7,6 +7,10 @@ export interface ClaudeStatusInput {
     used_percentage: number;
     remaining_percentage: number;
   };
+  model?: {
+    id: string;
+    display_name?: string;
+  };
   rate_limits?: {
     five_hour?: {
       used_percentage: number;
@@ -23,6 +27,7 @@ export interface ClaudeStatusInput {
 /** The config file stored at ~/.claude/ai-wincon-bar.json */
 export interface WinconBarConfig {
   elements: {
+    modelName: boolean;
     progressBar: boolean;
     percent: boolean;
     tokens: boolean;
