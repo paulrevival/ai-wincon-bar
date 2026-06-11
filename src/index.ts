@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { createProgram } from "./cli.js";
-import { runSetup } from "./setup.js";
-import { loadConfig, isConfigured, readCache, writeCache } from "./config.js";
+import { loadConfig, readCache, writeCache } from "./config.js";
 import { renderStatusLine } from "./render.js";
+import { handleInteractive } from "./interactive.js";
 import type { ClaudeStatusInput } from "./types.js";
 
 async function main(): Promise<void> {
@@ -19,9 +19,8 @@ async function main(): Promise<void> {
     // Claude Code pipes JSON to stdin → render status line
     handleStatusLineRender();
   } else {
-    // User ran `ai-wincon-bar` with no args → run setup wizard
-    const config = isConfigured() ? loadConfig() : undefined;
-    await runSetup(config);
+    // User ran `ai-wincon-bar` with no args → show config / setup wizard
+    await handleInteractive();
   }
 }
 

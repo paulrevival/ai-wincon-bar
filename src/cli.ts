@@ -1,8 +1,7 @@
 import { createRequire } from "node:module";
 import { Command } from "commander";
-import { runSetup } from "./setup.js";
 import { runUninstall } from "./uninstall.js";
-import { loadConfig } from "./config.js";
+import { handleInteractive } from "./interactive.js";
 
 const pkg = createRequire(import.meta.url)("../package.json");
 
@@ -16,11 +15,8 @@ export function createProgram(): Command {
 
   program
     .command("config")
-    .description("Interactively configure elements, thresholds, and status line integration")
-    .action(() => {
-      const config = loadConfig();
-      return runSetup(config);
-    });
+    .description("Show current config or run the setup wizard")
+    .action(() => handleInteractive());
 
   program
     .command("uninstall")
