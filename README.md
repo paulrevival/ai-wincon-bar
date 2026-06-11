@@ -1,0 +1,143 @@
+# 🪟 ai-wincon-bar
+
+**Context window usage bar for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) status line.**
+
+Displays a compact, color-coded view of your context window and rate limit usage — right in the Claude Code terminal status bar.
+
+```
+▓▓▓▓░░░░░░ | 45% | 95K/200K | 5h: 12%
+```
+
+---
+
+## Features
+
+- **Progress bar** — visual context window fill (`▓▓▓▓▓░░░░░`)
+- **Percentage** — quick glance at usage (`45%`)
+- **Token counter** — input + output tokens vs. window size (`95K/200K`)
+- **Rate limit indicator** — 5-hour usage tier from API (`5h: 12%`)
+- **Color thresholds** — green → yellow → red as you approach the limit
+- **Interactive config** — toggle elements, set thresholds, auto-update settings
+- **Cache fallback** — survives `/compact` zero-bursts without flickering
+
+## Quick Start
+
+```bash
+# Install globally
+npm install -g @paulrevival/ai-wincon-bar
+
+# Run interactive setup (picks elements, thresholds, updates settings.json)
+ai-wincon-bar config
+```
+
+That's it — restart Claude Code and the bar appears in your status line.
+
+## One-off Setup (no install)
+
+Run the setup wizard without installing globally — useful for initial configuration:
+
+```bash
+npx @paulrevival/ai-wincon-bar config
+```
+
+> **Note:** `npx` only works for the `config` step. The status bar itself requires a global install so Claude Code can find the `ai-wincon-bar` command in `$PATH`.
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `ai-wincon-bar` | Show current config + preview (interactive) |
+| `ai-wincon-bar config` | Interactive setup wizard |
+| `ai-wincon-bar clear` | Clear the status data cache |
+
+## How It Works
+
+Claude Code supports a [custom status line](https://docs.anthropic.com/en/docs/claude-code/settings#status-line) that receives JSON context via stdin and displays the output string. `ai-wincon-bar` acts as that command:
+
+1. Claude Code pipes context window data to stdin on every turn
+2. The tool parses the JSON, applies your config, and renders a formatted bar
+3. The output appears in the bottom status bar of your terminal
+
+### Config File
+
+Stored at `~/.claude/ai-wincon-bar/config.json`:
+
+```json
+{
+  "elements": {
+    "progressBar": true,
+    "percent": true,
+    "tokens": true,
+    "tariff": true
+  },
+  "thresholds": {
+    "yellow": 50,
+    "red": 80
+  }
+}
+```
+
+### Settings Integration
+
+During `config`, the tool offers to update `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "ai-wincon-bar"
+  }
+}
+```
+
+You can also set this manually if preferred.
+
+## Configuration Options
+
+### Elements
+
+Toggle which parts of the bar are visible:
+
+| Element | Example | Default |
+|---|---|---|
+| `progressBar` | `▓▓▓▓▓░░░░░` | ✅ on |
+| `percent` | `45%` | ✅ on |
+| `tokens` | `95K/200K` | ✅ on |
+| `tariff` | `5h: 12%` | ✅ on (hidden when no rate limit data) |
+
+### Thresholds
+
+Control when colors change:
+
+| Threshold | Default | Effect |
+|---|---|---|
+| `yellow` | `50` | Bar turns yellow at 50% usage |
+| `red` | `80` | Bar turns red at 80% usage |
+
+## Custom Config Directory
+
+By default, config and cache live in `~/.claude/ai-wincon-bar/`. Set `AI_WINCON_BAR_DIR` to use a different directory:
+
+```bash
+export AI_WINCON_BAR_DIR=/path/to/custom/dir
+```
+
+## Development
+
+```bash
+git clone https://github.com/paulrevival/ai-wincon-bar.git
+cd ai-wincon-bar
+npm install
+npm run build   # compile to dist/
+npm test        # run test suite (vitest)
+npm run dev     # watch mode
+```
+
+## Requirements
+
+- Node.js ≥ 18
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+
+## License
+
+[MIT](./LICENSE)

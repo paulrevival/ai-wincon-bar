@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
@@ -6,20 +6,29 @@ import type { ClaudeStatusInput } from "./types.js";
 import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
 import type { CacheEntry } from "./constants.js";
 
-function getClaudeDir(): string {
-  return process.env.AI_WINCON_BAR_DIR ?? join(homedir(), ".claude");
+/** Base directory for all ai-wincon-bar data (config, cache). */
+function getDataDir(): string {
+  return process.env.AI_WINCON_BAR_DIR ?? join(homedir(), ".claude", "ai-wincon-bar");
+}
+
+/** Ensure the data directory exists. */
+function ensureDataDir(): void {
+  const dir = getDataDir();
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
 }
 
 export function getConfigPath(): string {
-  return join(getClaudeDir(), CONFIG_FILENAME);
+  return join(getDataDir(), CONFIG_FILENAME);
 }
 
 export function getCachePath(): string {
-  return join(getClaudeDir(), "ai-wincon-bar-cache.json");
+  return join(getDataDir(), "cache.json");
 }
 
 export function getSettingsPath(): string {
-  return join(getClaudeDir(), "settings.json");
+  return process.env.AI_WINCON_BAR_SETTINGS_PATH ?? join(homedir(), ".claude", "settings.json");
 }
 
 /**
@@ -46,6 +55,7 @@ export function readCache(): ClaudeStatusInput | null {
  */
 export function writeCache(data: ClaudeStatusInput): void {
   try {
+    ensureDataDir();
     const entry: CacheEntry = { data, ts: Date.now() };
     writeFileSync(getCachePath(), JSON.stringify(entry), "utf-8");
   } catch {
@@ -66,7 +76,7 @@ export function clearCache(): void {
 }
 
 /**
- * Load config from ~/.claude/ai-wincon-bar.json, merging with defaults.
+ * Load config from ~/.claude/ai-wincon-bar/config.json, merging with defaults.
  * Returns DEFAULT_CONFIG if file doesn't exist or is malformed.
  */
 export function loadConfig(): WinconBarConfig {
@@ -93,9 +103,10 @@ export function loadConfig(): WinconBarConfig {
 }
 
 /**
- * Save config to ~/.claude/ai-wincon-bar.json.
+ * Save config to ~/.claude/ai-wincon-bar/config.json.
  */
 export function saveConfig(config: WinconBarConfig): void {
+  ensureDataDir();
   const configPath = getConfigPath();
   writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import {
   loadConfig,
   saveConfig,
@@ -18,6 +18,7 @@ import { DEFAULT_CONFIG } from "../src/constants.js";
 import type { ClaudeStatusInput, WinconBarConfig } from "../src/types.js";
 
 const TMP_DIR = join(tmpdir(), "ai-wincon-bar-test-" + process.pid);
+const TMP_SETTINGS = join(TMP_DIR, "settings.json");
 
 function makeInput(usedPct: number, tokens = 90_000): ClaudeStatusInput {
   return {
@@ -34,26 +35,28 @@ function makeInput(usedPct: number, tokens = 90_000): ClaudeStatusInput {
 beforeEach(() => {
   mkdirSync(TMP_DIR, { recursive: true });
   process.env.AI_WINCON_BAR_DIR = TMP_DIR;
+  process.env.AI_WINCON_BAR_SETTINGS_PATH = TMP_SETTINGS;
 });
 
 afterEach(() => {
   rmSync(TMP_DIR, { recursive: true, force: true });
   delete process.env.AI_WINCON_BAR_DIR;
+  delete process.env.AI_WINCON_BAR_SETTINGS_PATH;
 });
 
 // ─── Path helpers ────────────────────────────────────────
 
 describe("path helpers", () => {
-  it("getConfigPath points to claude dir", () => {
+  it("getConfigPath points to data dir", () => {
     expect(getConfigPath()).toBe(join(TMP_DIR, "ai-wincon-bar.json"));
   });
 
-  it("getCachePath points to claude dir", () => {
-    expect(getCachePath()).toBe(join(TMP_DIR, "ai-wincon-bar-cache.json"));
+  it("getCachePath points to data dir", () => {
+    expect(getCachePath()).toBe(join(TMP_DIR, "cache.json"));
   });
 
-  it("getSettingsPath points to settings.json", () => {
-    expect(getSettingsPath()).toBe(join(TMP_DIR, "settings.json"));
+  it("getSettingsPath respects env override", () => {
+    expect(getSettingsPath()).toBe(TMP_SETTINGS);
   });
 });
 

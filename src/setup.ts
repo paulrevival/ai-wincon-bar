@@ -1,3 +1,7 @@
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
 import checkbox from "@inquirer/checkbox";
 import confirm from "@inquirer/confirm";
 import inputNum from "@inquirer/number";
@@ -8,9 +12,35 @@ import { saveConfig, updateSettingsStatusLine, loadConfig, clearCache } from "./
 const ELEMENT_CHOICES = [
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
   { name: "Percentage (45%)", value: "percent" },
-  { name: "Tokens (90K/200K)", value: "tokens" },
+  { name: "Tokens (95K/200K)", value: "tokens" },
   { name: "Tariff / Rate limits (5h: 12%)", value: "tariff" },
 ] as const;
+
+/**
+ * Install the SKILL.md file to ~/.claude/skills/ai-wincon-bar/ so that
+ * the /ai-wincon-bar skill is available inside Claude Code.
+ */
+export function installSkill(): void {
+  const skillsDir = join(homedir(), ".claude", "skills", "ai-wincon-bar");
+  const skillDest = join(skillsDir, "SKILL.md");
+
+  // Already installed — skip
+  if (existsSync(skillDest)) return;
+
+  // Find SKILL.md bundled with this package (sibling of package root)
+  const thisDir = dirname(fileURLToPath(import.meta.url));
+  const skillSource = join(thisDir, "..", "SKILL.md");
+
+  if (!existsSync(skillSource)) {
+    // Running from source / dev — not a published package
+    return;
+  }
+
+  mkdirSync(skillsDir, { recursive: true });
+  const content = readFileSync(skillSource, "utf-8");
+  writeFileSync(skillDest, content, "utf-8");
+  console.log("✅ Skill installed to ~/.claude/skills/ai-wincon-bar/SKILL.md");
+}
 
 export async function runSetup(
   existingConfig?: WinconBarConfig,
@@ -76,7 +106,7 @@ export async function runSetup(
 
   saveConfig(newConfig);
   clearCache();
-  console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar.json`);
+  console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar/config.json`);
 
   // 4. Update settings.json
   const shouldUpdateSettings = await confirm({
@@ -88,6 +118,9 @@ export async function runSetup(
     updateSettingsStatusLine();
     console.log("✅ statusLine updated in ~/.claude/settings.json");
   }
+
+  // 5. Install skill
+  installSkill();
 
   console.log("\n🎉 Done! Restart Claude Code to see the status bar.\n");
 }

@@ -12,8 +12,13 @@ export function renderStatusLine(
   config: WinconBarConfig,
 ): string {
   const parts: string[] = [];
-  const { used_percentage, total_input_tokens, context_window_size } =
-    input.context_window;
+  const {
+    used_percentage,
+    total_input_tokens,
+    total_output_tokens,
+    context_window_size,
+  } = input.context_window;
+  const totalTokens = total_input_tokens + total_output_tokens;
   const color = getColorForPercentage(used_percentage, config.thresholds);
 
   if (config.elements.progressBar) {
@@ -26,7 +31,7 @@ export function renderStatusLine(
 
   if (config.elements.tokens) {
     parts.push(
-      `${formatTokens(total_input_tokens)}/${formatTokens(context_window_size)}`,
+      `${formatTokens(totalTokens)}/${formatTokens(context_window_size)}`,
     );
   }
 

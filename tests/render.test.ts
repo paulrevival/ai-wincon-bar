@@ -26,14 +26,15 @@ describe("renderStatusLine", () => {
 
   it("renders all elements with default config", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
-    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 90K/1M");
+    // 90K input + 5K output = 95K total
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
   });
 
   // ─── Edge percentages ────────────────────────────
 
   it("renders at 0% used", () => {
     const output = renderStatusLine(
-      makeInput({ used_percentage: 0, total_input_tokens: 0, remaining_percentage: 100 }),
+      makeInput({ used_percentage: 0, total_input_tokens: 0, total_output_tokens: 0, remaining_percentage: 100 }),
       DEFAULT_CONFIG,
     );
     expect(strip(output)).toBe("░░░░░░░░░░ | 0% | 0/1M");
@@ -41,7 +42,7 @@ describe("renderStatusLine", () => {
 
   it("renders at 100% used", () => {
     const output = renderStatusLine(
-      makeInput({ used_percentage: 100, total_input_tokens: 1_000_000, remaining_percentage: 0 }),
+      makeInput({ used_percentage: 100, total_input_tokens: 999_000, total_output_tokens: 1_000, remaining_percentage: 0 }),
       DEFAULT_CONFIG,
     );
     expect(strip(output)).toBe("▓▓▓▓▓▓▓▓▓▓ | 100% | 1M/1M");
@@ -62,7 +63,8 @@ describe("renderStatusLine", () => {
       },
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
-    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 90K/1M | 5h: 12%");
+    // 90K input + 5K output = 95K total
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M | 5h: 12%");
   });
 
   it("hides tariff when rate_limits absent", () => {
@@ -150,7 +152,7 @@ describe("renderStatusLine", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
     // Extract just the tokens part (third segment)
     const plain = strip(output);
-    const tokensPart = plain.split(" | ")[2]; // "90K/1M"
+    const tokensPart = plain.split(" | ")[2]; // "95K/1M"
     // Find the corresponding section in the colored output
     const tokensStart = output.indexOf(tokensPart);
     const tokensSection = output.substring(tokensStart, tokensStart + tokensPart.length);
@@ -165,7 +167,8 @@ describe("renderStatusLine", () => {
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
-    expect(strip(output)).toBe("90K/1M");
+    // 90K input + 5K output = 95K total
+    expect(strip(output)).toBe("95K/1M");
   });
 
   it("renders only percent when others disabled", () => {
@@ -213,6 +216,7 @@ describe("renderStatusLine", () => {
   it("formats large token counts correctly", () => {
     const input = makeInput({
       total_input_tokens: 1_500_000,
+      total_output_tokens: 0,
       context_window_size: 2_000_000,
       used_percentage: 75,
     });
