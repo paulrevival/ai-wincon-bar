@@ -5,13 +5,14 @@
 Displays a compact, color-coded view of your context window and rate limit usage — right in the Claude Code terminal status bar.
 
 ```
-▓▓▓▓░░░░░░ | 45% | 95K/200K | 5h: 12%
+[Sonnet 4.6] | ▓▓▓▓░░░░░░ | 45% | 95K/200K | 5h: 12%
 ```
 
 ---
 
 ## Features
 
+- **Model name** — current model in brackets (`[Sonnet 4.6]`)
 - **Progress bar** — visual context window fill (`▓▓▓▓▓░░░░░`)
 - **Percentage** — quick glance at usage (`45%`)
 - **Token counter** — input + output tokens vs. window size (`95K/200K`)
@@ -32,23 +33,14 @@ ai-wincon-bar config
 
 That's it — restart Claude Code and the bar appears in your status line.
 
-## One-off Setup (no install)
-
-Run the setup wizard without installing globally — useful for initial configuration:
-
-```bash
-npx @paulrevival/ai-wincon-bar config
-```
-
-> **Note:** `npx` only works for the `config` step. The status bar itself requires a global install so Claude Code can find the `ai-wincon-bar` command in `$PATH`.
-
 ## Commands
 
 | Command | Description |
 |---|---|
-| `ai-wincon-bar` | Show current config + preview (interactive) |
+| `ai-wincon-bar` | Show current config + preview, or run setup wizard |
 | `ai-wincon-bar config` | Interactive setup wizard |
-| `ai-wincon-bar clear` | Clear the status data cache |
+| `ai-wincon-bar uninstall` | Remove config, skill, statusLine entry, and npm package |
+| `ai-wincon-bar help` | Show available commands |
 
 ## How It Works
 
@@ -60,11 +52,12 @@ Claude Code supports a [custom status line](https://docs.anthropic.com/en/docs/c
 
 ### Config File
 
-Stored at `~/.claude/ai-wincon-bar/config.json`:
+Stored at `~/.claude/ai-wincon-bar/ai-wincon-bar.json`:
 
 ```json
 {
   "elements": {
+    "modelName": true,
     "progressBar": true,
     "percent": true,
     "tokens": true,
@@ -100,6 +93,7 @@ Toggle which parts of the bar are visible:
 
 | Element | Example | Default |
 |---|---|---|
+| `modelName` | `[Sonnet 4.6]` | ✅ on (hidden when model data unavailable) |
 | `progressBar` | `▓▓▓▓▓░░░░░` | ✅ on |
 | `percent` | `45%` | ✅ on |
 | `tokens` | `95K/200K` | ✅ on |
