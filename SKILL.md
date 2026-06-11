@@ -1,15 +1,24 @@
 ---
 name: ai-wincon-bar
-description: Use when user wants to configure, check, or modify the ai-wincon-bar status line tool — change displayed elements (progress bar, percent, tokens, tariff), adjust color thresholds, show current config, or reset to defaults. Triggers on "ai-wincon-bar", "wincon", "context bar", "status line config", "/ai-wincon-bar".
+description: Use when user wants to configure, check, or modify the ai-wincon-bar status line tool — change displayed elements (progress bar, percent, tokens, tariff), adjust color thresholds, show current config, reset to defaults, or uninstall. Triggers on "ai-wincon-bar", "wincon", "context bar", "status line config", "/ai-wincon-bar".
 ---
 
-# ai-wincon-bar Configuration
+# ai-wincon-bar
 
-Configure the context window usage bar for Claude Code's status line.
+Context window usage bar for Claude Code's status line.
+
+## Paths
+
+| What | Path |
+|---|---|
+| Config | `~/.claude/ai-wincon-bar/ai-wincon-bar.json` |
+| Cache | `~/.claude/ai-wincon-bar/cache.json` |
+| Skill | `~/.claude/skills/ai-wincon-bar/SKILL.md` |
+| Settings | `~/.claude/settings.json` (field: `statusLine`) |
 
 ## Config file
 
-Path: `~/.claude/ai-wincon-bar/ai-wincon-bar.json`
+`~/.claude/ai-wincon-bar/ai-wincon-bar.json`:
 
 ```json
 {
@@ -81,3 +90,24 @@ If `~/.claude/ai-wincon-bar/ai-wincon-bar.json` doesn't exist, offer to run the 
 ### Show status line in settings
 
 If the user asks about whether the status line is active, check `~/.claude/settings.json` for the `statusLine` field and report its current state.
+
+### Uninstall
+
+If the user asks to uninstall or remove ai-wincon-bar:
+
+1. Confirm with the user using AskUserQuestion
+2. Remove `~/.claude/ai-wincon-bar/` directory (config + cache)
+3. Remove `~/.claude/skills/ai-wincon-bar/` directory (skill)
+4. Read `~/.claude/settings.json`, remove the `statusLine` field if it points to `ai-wincon-bar`, write back
+5. Run `npm uninstall -g @paulrevival/ai-wincon-bar` via Bash tool
+
+### Help
+
+If the user asks for help or available commands, show:
+
+```
+ai-wincon-bar          Show config or run setup wizard
+ai-wincon-bar config   Same as above
+ai-wincon-bar help     Show available commands
+ai-wincon-bar uninstall  Remove everything and uninstall
+```
