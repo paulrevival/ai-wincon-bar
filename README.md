@@ -19,7 +19,7 @@ Displays a compact, color-coded view of your context window and rate limit usage
 - **Rate limit indicator** — 5-hour usage tier from API (`5h: 12%`)
 - **Color thresholds** — green → yellow → red as you approach the limit
 - **Interactive config** — toggle elements, set thresholds, auto-update settings
-- **Cache fallback** — survives `/compact` zero-bursts without flickering
+- **Cache fallback** — smooths over brief zero-bursts (e.g. during `/compact`) without flickering; scoped to the current session, so `/clear` never shows stale tokens
 
 ## Quick Start
 
