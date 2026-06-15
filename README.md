@@ -85,6 +85,22 @@ During `config`, the tool offers to update `~/.claude/settings.json`:
 
 You can also set this manually if preferred.
 
+## Claude Code Skill
+
+The package bundles a `SKILL.md` that lets you configure the bar directly from a Claude Code chat. `ai-wincon-bar config` offers to install it to `~/.claude/skills/ai-wincon-bar/SKILL.md`.
+
+Once installed, invoke it via the `/ai-wincon-bar` slash command, or just describe what you want — it also triggers on phrases like "context bar", "status line config", or "wincon":
+
+> Enable the token counter and set the red threshold to 75.
+
+Through the skill you can:
+
+- Show the current config with a live preview
+- Toggle elements and adjust color thresholds
+- Reset to defaults
+- Check whether the status line is active in `settings.json`
+- Fully uninstall the tool (config, cache, skill, statusLine entry, npm package)
+
 ## Configuration Options
 
 ### Elements
