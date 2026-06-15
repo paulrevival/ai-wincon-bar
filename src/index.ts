@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createProgram } from "./cli.js";
-import { loadConfig, readCache, writeCache } from "./config.js";
+import { loadConfig, pickRenderData } from "./config.js";
 import { renderStatusLine } from "./render.js";
 import { handleInteractive } from "./interactive.js";
 import type { ClaudeStatusInput } from "./types.js";
@@ -29,16 +29,7 @@ function handleStatusLineRender(): void {
     const input = readFileSync(process.stdin.fd, "utf-8");
     const data: ClaudeStatusInput = JSON.parse(input);
 
-    let dataToRender = data;
-
-    if (data.context_window.used_percentage > 0) {
-      // Real data — cache it
-      writeCache(data);
-    } else {
-      // Zero burst — use cached data if available and fresh
-      const cached = readCache();
-      if (cached) dataToRender = cached;
-    }
+    const dataToRender = pickRenderData(data);
 
     const config = loadConfig();
     const output = renderStatusLine(dataToRender, config);

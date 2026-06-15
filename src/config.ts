@@ -34,8 +34,12 @@ export function getSettingsPath(): string {
 /**
  * Read cached status data if it exists and is not expired.
  * Returns null if no cache or cache is stale.
+ *
+ * If `currentSessionId` is provided, a cache entry from a different session
+ * (e.g. left over after /clear started a new session) is treated as stale and
+ * ignored — the cached context no longer applies to this session.
  */
-export function readCache(): ClaudeStatusInput | null {
+export function readCache(currentSessionId?: string): ClaudeStatusInput | null {
   const cachePath = getCachePath();
   if (!existsSync(cachePath)) return null;
   try {
@@ -43,7 +47,12 @@ export function readCache(): ClaudeStatusInput | null {
     const entry: CacheEntry = JSON.parse(raw);
     if (Date.now() - entry.ts > CACHE_TTL_MS) return null;
     const data = entry.data as ClaudeStatusInput;
-    if (data.context_window?.used_percentage > 0) return data;
+    if (data.context_window?.used_percentage > 0) {
+      if (currentSessionId && data.session_id && data.session_id !== currentSessionId) {
+        return null;
+      }
+      return data;
+    }
     return null;
   } catch {
     return null;
@@ -73,6 +82,24 @@ export function clearCache(): void {
   } catch {
     // Non-critical
   }
+}
+
+/**
+ * Decide which status data to render for a given Claude Code status update.
+ *
+ * Real data (used_percentage > 0) is cached and rendered directly. A zero
+ * burst (used_percentage === 0) falls back to a fresh cache entry so brief
+ * gaps don't blank the bar — but only when the cache belongs to the SAME
+ * session. After /clear the session changes, so a stale cache from the
+ * previous session is ignored and the fresh (zero) input is rendered instead.
+ */
+export function pickRenderData(input: ClaudeStatusInput): ClaudeStatusInput {
+  if (input.context_window.used_percentage > 0) {
+    writeCache(input);
+    return input;
+  }
+  const cached = readCache(input.session_id);
+  return cached ?? input;
 }
 
 /**

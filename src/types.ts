@@ -1,5 +1,6 @@
 /** The JSON object Claude Code sends to statusLine command via stdin */
 export interface ClaudeStatusInput {
+  session_id?: string;
   context_window: {
     total_input_tokens: number;
     total_output_tokens: number;

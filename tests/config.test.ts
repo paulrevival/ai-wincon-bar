@@ -13,6 +13,7 @@ import {
   getConfigPath,
   getSettingsPath,
   updateSettingsStatusLine,
+  pickRenderData,
 } from "../src/config.js";
 import { DEFAULT_CONFIG } from "../src/constants.js";
 import type { ClaudeStatusInput, WinconBarConfig } from "../src/types.js";
@@ -190,6 +191,39 @@ describe("clearCache", () => {
 
   it("does not throw when no cache file", () => {
     expect(() => clearCache()).not.toThrow();
+  });
+});
+
+// ─── pickRenderData: cache reset after /clear ──────────
+
+describe("pickRenderData", () => {
+  function withSession(input: ClaudeStatusInput, session_id: string): ClaudeStatusInput {
+    return { ...input, session_id };
+  }
+
+  it("caches and renders real data (used_percentage > 0)", () => {
+    const result = pickRenderData(withSession(makeInput(42, 90_000), "S"));
+    expect(result.context_window.used_percentage).toBe(42);
+    expect(readCache()?.context_window.used_percentage).toBe(42);
+  });
+
+  it("falls back to fresh same-session cache on a zero burst", () => {
+    pickRenderData(withSession(makeInput(42, 90_000), "S"));
+    const burst = withSession(makeInput(0, 0), "S");
+    expect(pickRenderData(burst).context_window.used_percentage).toBe(42);
+  });
+
+  it("ignores stale cache from a previous session after /clear (zero burst, new session)", () => {
+    // Previous session filled the cache with 45%.
+    pickRenderData(withSession(makeInput(45, 90_000), "OLD-SESSION"));
+
+    // First post-/clear update: new session, empty context (zero burst).
+    const afterClear = withSession(makeInput(0, 0), "NEW-SESSION");
+    const result = pickRenderData(afterClear);
+
+    // Must NOT leak the previous session's 45%.
+    expect(result.context_window.used_percentage).toBe(0);
+    expect(result.session_id).toBe("NEW-SESSION");
   });
 });
 
