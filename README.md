@@ -5,7 +5,7 @@
 Displays a compact, color-coded view of your context window and rate limit usage — right in the Claude Code terminal status bar.
 
 ```
-[Sonnet 4.6] | ▓▓▓▓░░░░░░ | 45% | 95K/200K | 5h: 12%
+[Sonnet 4.6] | ▓▓▓▓░░░░░░ | 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
 ```
 
 ---
@@ -15,11 +15,11 @@ Displays a compact, color-coded view of your context window and rate limit usage
 - **Model name** — current model in brackets (`[Sonnet 4.6]`)
 - **Progress bar** — visual context window fill (`▓▓▓▓▓░░░░░`)
 - **Percentage** — quick glance at usage (`45%`)
-- **Token counter** — input + output tokens vs. window size (`95K/200K`)
+- **Token counter** — input, output and window size (`▼:90K ▲:5K ▣:200K`)
 - **Rate limit indicator** — 5-hour usage tier from API (`5h: 12%`)
 - **Color thresholds** — green → yellow → red as you approach the limit
 - **Interactive config** — toggle elements, set thresholds, auto-update settings
-- **Cache fallback** — smooths over brief zero-bursts (e.g. during `/compact`) without flickering; scoped to the current session, so `/clear` never shows stale tokens
+- **Cache fallback** — smooths over brief zero-bursts (e.g. during `/compact`) without flickering; **scoped per project**, so `/clear` never shows stale tokens and two Claude Code projects running side-by-side never clobber each other's cache
 
 ## Quick Start
 
@@ -32,6 +32,27 @@ ai-wincon-bar config
 ```
 
 That's it — restart Claude Code and the bar appears in your status line.
+
+## Install from source (no GitHub / npm registry)
+
+If you've cloned the repo (or just want to install a local build globally instead of pulling from npm):
+
+```bash
+# from the repository root
+npm install          # install dependencies
+npm run build        # compile src/ → dist/index.js
+npm install -g .     # install the built package globally (ships dist/ + SKILL.md)
+```
+
+`ai-wincon-bar` now points at your local build. If you already had it configured, run `ai-wincon-bar config` once afterwards — this also auto-updates the installed `SKILL.md` to match the bundled one. Restart Claude Code.
+
+**To pick up edits without reinstalling** (rebuild → live):
+
+```bash
+npm run build && npm link      # or run `npm run dev` (watch) in another terminal
+```
+
+> `npm install -g .` uses the already-built `dist/` — it does **not** run `npm run build` for you. Always build first, then install.
 
 ## Commands
 
@@ -112,7 +133,7 @@ Toggle which parts of the bar are visible:
 | `modelName` | `[Sonnet 4.6]` | ✅ on (hidden when model data unavailable) |
 | `progressBar` | `▓▓▓▓▓░░░░░` | ✅ on |
 | `percent` | `45%` | ✅ on |
-| `tokens` | `95K/200K` | ✅ on |
+| `tokens` | `▼:90K ▲:5K ▣:200K` | ✅ on |
 | `tariff` | `5h: 12%` | ✅ on (hidden when no rate limit data) |
 
 ### Thresholds
