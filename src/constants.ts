@@ -27,8 +27,19 @@ export const BAR_FILLED = "▓";
 export const BAR_EMPTY = "░";
 export const BAR_WIDTH = 10;
 
-/** Cache TTL in ms — prevents stale data after /compact while covering brief zero bursts */
-export const CACHE_TTL_MS = 10_000;
+/**
+ * How long a cached context reading can still back up a zero-payload.
+ *
+ * Claude Code emits zero-payloads (used_percentage == 0) continuously between
+ * context updates; real readings (used_percentage > 0) arrive only while the
+ * agent is actively working. The "thinking pause" between two real readings is
+ * measured in minutes, so a short TTL blanks the bar to zero on every request.
+ *
+ * This is therefore a generous stale-safety-net (bounds how long an abandoned
+ * or post-/compact reading can linger), NOT brief-burst coverage. Cross-session
+ * invalidation after /clear is handled separately via session_id.
+ */
+export const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 /** Cache entry with timestamp for TTL-based expiration */
 export interface CacheEntry {

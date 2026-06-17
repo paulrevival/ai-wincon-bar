@@ -16,7 +16,7 @@ import {
   pickRenderData,
   getProjectId,
 } from "../src/config.js";
-import { DEFAULT_CONFIG } from "../src/constants.js";
+import { DEFAULT_CONFIG, CACHE_TTL_MS } from "../src/constants.js";
 import type { ClaudeStatusInput, WinconBarConfig } from "../src/types.js";
 
 const TMP_DIR = join(tmpdir(), "ai-wincon-bar-test-" + process.pid);
@@ -161,9 +161,21 @@ describe("readCache (map format)", () => {
   });
 
   it("returns null for expired entry (TTL)", () => {
-    const entry = { data: makeInput(50), ts: Date.now() - 11_000, session_id: "S" };
+    const entry = { data: makeInput(50), ts: Date.now() - (CACHE_TTL_MS + 5_000), session_id: "S" };
     writeFileSync(getCachePath(), JSON.stringify({ "/test/project": entry }), "utf-8");
     expect(readCache("S", "/test/project")).toBeNull();
+  });
+
+  it("serves a same-session entry on a zero burst even after a 60s gap", () => {
+    // Claude Code emits zero-payloads continuously between context updates;
+    // a 60s gap (a normal thinking pause) must still fall back to the last real
+    // reading instead of blanking the bar to zero. Regression for the
+    // "status resets to zero when sending a request" bug.
+    const entry = { data: makeInput(42), ts: Date.now() - 60_000, session_id: "S" };
+    writeFileSync(getCachePath(), JSON.stringify({ "/test/project": entry }), "utf-8");
+    const cached = readCache("S", "/test/project");
+    expect(cached).not.toBeNull();
+    expect(cached!.context_window.used_percentage).toBe(42);
   });
 
   it("returns null when used_percentage is 0", () => {
@@ -217,7 +229,7 @@ describe("writeCache (map format)", () => {
 
   it("evicts expired entries on write", () => {
     const map = {
-      "/stale/project": { data: makeInput(10), ts: Date.now() - 11_000, session_id: "Y" },
+      "/stale/project": { data: makeInput(10), ts: Date.now() - (CACHE_TTL_MS + 5_000), session_id: "Y" },
     };
     writeFileSync(getCachePath(), JSON.stringify(map), "utf-8");
     writeCache(makeInput(42)); // снесёт /stale/project, запишет /test/project
