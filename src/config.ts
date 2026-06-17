@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
 import type { ClaudeStatusInput } from "./types.js";
 import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
-import type { CacheEntry, CacheMap } from "./constants.js";
+import type { CacheMap } from "./constants.js";
 
 /** Base directory for all ai-wincon-bar data (config, cache). */
 function getDataDir(): string {
@@ -36,42 +36,75 @@ export function getProjectId(input: ClaudeStatusInput): string {
   return input.workspace?.project_dir ?? input.cwd ?? "__default__";
 }
 
-/**
- * Read cached status data if it exists and is not expired.
- * Returns null if no cache or cache is stale.
- *
- * If `currentSessionId` is provided, a cache entry from a different session
- * (e.g. left over after /clear started a new session) is treated as stale and
- * ignored — the cached context no longer applies to this session.
- */
-export function readCache(currentSessionId?: string): ClaudeStatusInput | null {
+/** Прочитать cache.json как CacheMap. Legacy-формат { data, ts } → пустой map. */
+function readCacheMap(): CacheMap {
   const cachePath = getCachePath();
-  if (!existsSync(cachePath)) return null;
+  if (!existsSync(cachePath)) return {};
   try {
-    const raw = readFileSync(cachePath, "utf-8");
-    const entry: CacheEntry = JSON.parse(raw);
-    if (Date.now() - entry.ts > CACHE_TTL_MS) return null;
-    const data = entry.data as ClaudeStatusInput;
-    if (data.context_window?.used_percentage > 0) {
-      if (currentSessionId && data.session_id && data.session_id !== currentSessionId) {
-        return null;
-      }
-      return data;
+    const parsed = JSON.parse(readFileSync(cachePath, "utf-8"));
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "data" in parsed &&
+      parsed.data &&
+      typeof parsed.data === "object" &&
+      "context_window" in parsed.data
+    ) {
+      return {}; // legacy single-entry format
     }
-    return null;
+    return parsed as CacheMap;
   } catch {
-    return null;
+    return {};
   }
 }
 
+/** Удалить из map записи старше CACHE_TTL_MS (на месте). */
+function evictExpired(map: CacheMap): CacheMap {
+  const now = Date.now();
+  for (const key of Object.keys(map)) {
+    if (now - map[key].ts > CACHE_TTL_MS) {
+      delete map[key];
+    }
+  }
+  return map;
+}
+
 /**
- * Write current status data to cache with timestamp.
+ * Read cached status data for a project/session if it exists and is fresh.
+ * Read-only — не перезаписывает файл (вызывается на каждом рендере).
+ *
+ * TTL: запись старше CACHE_TTL_MS игнорируется.
+ * Session: если currentSessionId и сохранённый session_id не совпадают — игнорируется
+ * (сброс после /clear; теперь per-project).
+ * Legacy-формат { data, ts } трактуется как отсутствие кэша.
  */
-export function writeCache(data: ClaudeStatusInput): void {
+export function readCache(
+  currentSessionId?: string,
+  projectId?: string,
+): ClaudeStatusInput | null {
+  const map = readCacheMap();
+  const key = projectId ?? "__default__";
+  const entry = map[key];
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL_MS) return null;
+  const data = entry.data as ClaudeStatusInput;
+  if (!data.context_window || data.context_window.used_percentage <= 0) return null;
+  if (currentSessionId && entry.session_id && entry.session_id !== currentSessionId) {
+    return null;
+  }
+  return data;
+}
+
+/**
+ * Write current status data to the per-project cache map with timestamp + session_id.
+ * Evicts expired entries before writing. Failure is non-critical (silent).
+ */
+export function writeCache(input: ClaudeStatusInput): void {
   try {
     ensureDataDir();
-    const entry: CacheEntry = { data, ts: Date.now() };
-    writeFileSync(getCachePath(), JSON.stringify(entry), "utf-8");
+    const map = evictExpired(readCacheMap());
+    map[getProjectId(input)] = { data: input, ts: Date.now(), session_id: input.session_id };
+    writeFileSync(getCachePath(), JSON.stringify(map), "utf-8");
   } catch {
     // Cache write failure is non-critical
   }
@@ -92,18 +125,18 @@ export function clearCache(): void {
 /**
  * Decide which status data to render for a given Claude Code status update.
  *
- * Real data (used_percentage > 0) is cached and rendered directly. A zero
- * burst (used_percentage === 0) falls back to a fresh cache entry so brief
- * gaps don't blank the bar — but only when the cache belongs to the SAME
- * session. After /clear the session changes, so a stale cache from the
- * previous session is ignored and the fresh (zero) input is rendered instead.
+ * Real data (used_percentage > 0) is cached (per project) and rendered directly.
+ * A zero burst falls back to a fresh same-project, same-session cache entry so
+ * brief gaps (e.g. during /compact) don't blank the bar. After /clear the session
+ * changes, so a stale entry from the previous session is ignored. Different
+ * projects keep independent cache slots.
  */
 export function pickRenderData(input: ClaudeStatusInput): ClaudeStatusInput {
   if (input.context_window.used_percentage > 0) {
     writeCache(input);
     return input;
   }
-  const cached = readCache(input.session_id);
+  const cached = readCache(input.session_id, getProjectId(input));
   return cached ?? input;
 }
 

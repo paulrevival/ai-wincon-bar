@@ -24,6 +24,9 @@ const TMP_SETTINGS = join(TMP_DIR, "settings.json");
 
 function makeInput(usedPct: number, tokens = 90_000): ClaudeStatusInput {
   return {
+    session_id: "S",
+    workspace: { project_dir: "/test/project" },
+    cwd: "/test/project",
     context_window: {
       total_input_tokens: tokens,
       total_output_tokens: 0,
@@ -138,47 +141,93 @@ describe("isConfigured", () => {
   });
 });
 
-// ─── Cache: writeCache / readCache / clearCache ──────────
+// ─── Cache: readCache / writeCache / clearCache ──────────
 
-describe("writeCache + readCache", () => {
+describe("readCache (map format)", () => {
   it("returns null when no cache file exists", () => {
-    expect(readCache()).toBeNull();
+    expect(readCache("S", "/test/project")).toBeNull();
   });
 
   it("returns null for malformed cache", () => {
     writeFileSync(getCachePath(), "garbage", "utf-8");
-    expect(readCache()).toBeNull();
+    expect(readCache("S", "/test/project")).toBeNull();
   });
 
-  it("returns data for fresh cache", () => {
-    const input = makeInput(42);
-    writeCache(input);
-    const cached = readCache();
+  it("returns data for a fresh same-project, same-session entry", () => {
+    writeCache(makeInput(42));
+    const cached = readCache("S", "/test/project");
     expect(cached).not.toBeNull();
     expect(cached!.context_window.used_percentage).toBe(42);
-    expect(cached!.context_window.total_input_tokens).toBe(90_000);
   });
 
-  it("returns null for expired cache", () => {
-    // Write a cache entry with old timestamp
-    const entry = { data: makeInput(50), ts: Date.now() - 11_000 };
-    writeFileSync(getCachePath(), JSON.stringify(entry), "utf-8");
-    expect(readCache()).toBeNull();
+  it("returns null for expired entry (TTL)", () => {
+    const entry = { data: makeInput(50), ts: Date.now() - 11_000, session_id: "S" };
+    writeFileSync(getCachePath(), JSON.stringify({ "/test/project": entry }), "utf-8");
+    expect(readCache("S", "/test/project")).toBeNull();
   });
 
-  it("returns null for cache with used_percentage = 0", () => {
-    const input = makeInput(0, 0);
-    writeCache(input);
-    // Even though cache is fresh, zero percentage → null
-    expect(readCache()).toBeNull();
+  it("returns null when used_percentage is 0", () => {
+    const entry = { data: makeInput(0, 0), ts: Date.now(), session_id: "S" };
+    writeFileSync(getCachePath(), JSON.stringify({ "/test/project": entry }), "utf-8");
+    expect(readCache("S", "/test/project")).toBeNull();
   });
 
-  it("preserves full context_window data", () => {
-    const input = makeInput(75, 200_000);
-    writeCache(input);
-    const cached = readCache()!;
-    expect(cached.context_window.total_input_tokens).toBe(200_000);
-    expect(cached.context_window.context_window_size).toBe(1_000_000);
+  it("returns null when session_id differs (stale after /clear)", () => {
+    const entry = { data: makeInput(50), ts: Date.now(), session_id: "OLD" };
+    writeFileSync(getCachePath(), JSON.stringify({ "/test/project": entry }), "utf-8");
+    expect(readCache("NEW", "/test/project")).toBeNull();
+  });
+
+  it("returns null for a different project (isolation)", () => {
+    writeCache(makeInput(50));
+    expect(readCache("S", "/other/project")).toBeNull();
+  });
+
+  it("treats legacy { data, ts } format as absent (returns null)", () => {
+    const legacy = { data: makeInput(50), ts: Date.now() };
+    writeFileSync(getCachePath(), JSON.stringify(legacy), "utf-8");
+    expect(readCache("S", "/test/project")).toBeNull();
+  });
+});
+
+describe("writeCache (map format)", () => {
+  it("writes a per-project entry readable by readCache", () => {
+    writeCache(makeInput(42));
+    const cached = readCache("S", "/test/project");
+    expect(cached).not.toBeNull();
+    expect(cached!.context_window.used_percentage).toBe(42);
+  });
+
+  it("stores session_id alongside data", () => {
+    writeCache(makeInput(50));
+    const raw = JSON.parse(readFileSync(getCachePath(), "utf-8"));
+    expect(raw["/test/project"].session_id).toBe("S");
+  });
+
+  it("preserves other projects' entries", () => {
+    const map = {
+      "/other/project": { data: makeInput(99), ts: Date.now(), session_id: "X" },
+    };
+    writeFileSync(getCachePath(), JSON.stringify(map), "utf-8");
+    writeCache(makeInput(42)); // project /test/project
+    const raw = JSON.parse(readFileSync(getCachePath(), "utf-8"));
+    expect(raw["/other/project"]).toBeDefined();
+    expect(raw["/test/project"]).toBeDefined();
+  });
+
+  it("evicts expired entries on write", () => {
+    const map = {
+      "/stale/project": { data: makeInput(10), ts: Date.now() - 11_000, session_id: "Y" },
+    };
+    writeFileSync(getCachePath(), JSON.stringify(map), "utf-8");
+    writeCache(makeInput(42)); // снесёт /stale/project, запишет /test/project
+    const raw = JSON.parse(readFileSync(getCachePath(), "utf-8"));
+    expect(raw["/stale/project"]).toBeUndefined();
+    expect(raw["/test/project"]).toBeDefined();
+  });
+
+  it("does not throw on a normal write (non-critical)", () => {
+    expect(() => writeCache(makeInput(42))).not.toThrow();
   });
 });
 
@@ -195,36 +244,48 @@ describe("clearCache", () => {
   });
 });
 
-// ─── pickRenderData: cache reset after /clear ──────────
+// ─── pickRenderData: per-project cache reset after /clear ──────────
 
 describe("pickRenderData", () => {
-  function withSession(input: ClaudeStatusInput, session_id: string): ClaudeStatusInput {
-    return { ...input, session_id };
+  function withSession(
+    input: ClaudeStatusInput,
+    session_id: string,
+    project = "/test/project",
+  ): ClaudeStatusInput {
+    return { ...input, session_id, workspace: { project_dir: project }, cwd: project };
   }
 
   it("caches and renders real data (used_percentage > 0)", () => {
     const result = pickRenderData(withSession(makeInput(42, 90_000), "S"));
     expect(result.context_window.used_percentage).toBe(42);
-    expect(readCache()?.context_window.used_percentage).toBe(42);
+    expect(readCache("S", "/test/project")?.context_window.used_percentage).toBe(42);
   });
 
-  it("falls back to fresh same-session cache on a zero burst", () => {
+  it("falls back to fresh same-project, same-session cache on a zero burst", () => {
     pickRenderData(withSession(makeInput(42, 90_000), "S"));
     const burst = withSession(makeInput(0, 0), "S");
     expect(pickRenderData(burst).context_window.used_percentage).toBe(42);
   });
 
-  it("ignores stale cache from a previous session after /clear (zero burst, new session)", () => {
-    // Previous session filled the cache with 45%.
-    pickRenderData(withSession(makeInput(45, 90_000), "OLD-SESSION"));
-
-    // First post-/clear update: new session, empty context (zero burst).
-    const afterClear = withSession(makeInput(0, 0), "NEW-SESSION");
+  it("ignores stale same-project cache after /clear (new session, zero burst)", () => {
+    pickRenderData(withSession(makeInput(45, 90_000), "OLD"));
+    const afterClear = withSession(makeInput(0, 0), "NEW");
     const result = pickRenderData(afterClear);
-
-    // Must NOT leak the previous session's 45%.
     expect(result.context_window.used_percentage).toBe(0);
-    expect(result.session_id).toBe("NEW-SESSION");
+    expect(result.session_id).toBe("NEW");
+  });
+
+  it("does NOT leak another project's cache during a zero burst", () => {
+    pickRenderData(withSession(makeInput(77, 90_000), "SA", "/proj-a"));
+    const burstB = withSession(makeInput(0, 0), "SB", "/proj-b");
+    expect(pickRenderData(burstB).context_window.used_percentage).toBe(0);
+  });
+
+  it("independent zero-burst fallback per project (both valid)", () => {
+    pickRenderData(withSession(makeInput(30, 90_000), "SA", "/proj-a"));
+    pickRenderData(withSession(makeInput(60, 90_000), "SB", "/proj-b"));
+    expect(pickRenderData(withSession(makeInput(0, 0), "SA", "/proj-a")).context_window.used_percentage).toBe(30);
+    expect(pickRenderData(withSession(makeInput(0, 0), "SB", "/proj-b")).context_window.used_percentage).toBe(60);
   });
 });
 
