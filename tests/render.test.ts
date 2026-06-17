@@ -27,8 +27,8 @@ describe("renderStatusLine", () => {
 
   it("renders all elements with default config", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
-    // 90K input + 5K output = 95K total
-    expect(strip(output)).toBe("[glm-5.1] | ▓░░░░░░░░░ | 9% | 95K/1M");
+    // input 90K, output 5K
+    expect(strip(output)).toBe("[glm-5.1] | ▓░░░░░░░░░ | 9% | ▼:90K ▲:5K ▣:1M");
   });
 
   // ─── Model name ──────────────────────────────────
@@ -57,7 +57,7 @@ describe("renderStatusLine", () => {
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
-    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | ▼:90K ▲:5K ▣:1M");
   });
 
   it("hides model name when model field is missing", () => {
@@ -65,7 +65,7 @@ describe("renderStatusLine", () => {
       context_window: makeInput().context_window,
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
-    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | ▼:90K ▲:5K ▣:1M");
   });
 
   it("hides model name when display_name and id are empty", () => {
@@ -75,7 +75,7 @@ describe("renderStatusLine", () => {
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
     expect(strip(output)).not.toContain("[]");
-    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | 95K/1M");
+    expect(strip(output)).toBe("▓░░░░░░░░░ | 9% | ▼:90K ▲:5K ▣:1M");
   });
 
   it("renders only model name when others disabled", () => {
@@ -94,7 +94,7 @@ describe("renderStatusLine", () => {
       makeInput({ used_percentage: 0, total_input_tokens: 0, total_output_tokens: 0, remaining_percentage: 100 }),
       DEFAULT_CONFIG,
     );
-    expect(strip(output)).toBe("[glm-5.1] | ░░░░░░░░░░ | 0% | 0/1M");
+    expect(strip(output)).toBe("[glm-5.1] | ░░░░░░░░░░ | 0% | ▼:0 ▲:0 ▣:1M");
   });
 
   it("renders at 100% used", () => {
@@ -102,7 +102,7 @@ describe("renderStatusLine", () => {
       makeInput({ used_percentage: 100, total_input_tokens: 999_000, total_output_tokens: 1_000, remaining_percentage: 0 }),
       DEFAULT_CONFIG,
     );
-    expect(strip(output)).toBe("[glm-5.1] | ▓▓▓▓▓▓▓▓▓▓ | 100% | 1M/1M");
+    expect(strip(output)).toBe("[glm-5.1] | ▓▓▓▓▓▓▓▓▓▓ | 100% | ▼:999K ▲:1K ▣:1M");
   });
 
   it("rounds percentage to nearest integer", () => {
@@ -120,8 +120,8 @@ describe("renderStatusLine", () => {
       },
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
-    // 90K input + 5K output = 95K total
-    expect(strip(output)).toBe("[glm-5.1] | ▓░░░░░░░░░ | 9% | 95K/1M | 5h: 12%");
+    // input 90K, output 5K
+    expect(strip(output)).toBe("[glm-5.1] | ▓░░░░░░░░░ | 9% | ▼:90K ▲:5K ▣:1M | 5h: 12%");
   });
 
   it("hides tariff when rate_limits absent", () => {
@@ -209,7 +209,7 @@ describe("renderStatusLine", () => {
     const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
     // Extract just the tokens part — [model] | bar | percent | tokens
     const plain = strip(output);
-    const tokensPart = plain.split(" | ")[3]; // "95K/1M"
+    const tokensPart = plain.split(" | ")[3]; // "▼:90K ▲:5K ▣:1M"
     // Find the corresponding section in the colored output
     const tokensStart = output.indexOf(tokensPart);
     const tokensSection = output.substring(tokensStart, tokensStart + tokensPart.length);
@@ -224,8 +224,8 @@ describe("renderStatusLine", () => {
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
-    // 90K input + 5K output = 95K total
-    expect(strip(output)).toBe("95K/1M");
+    // input 90K, output 5K
+    expect(strip(output)).toBe("▼:90K ▲:5K ▣:1M");
   });
 
   it("renders only percent when others disabled", () => {
@@ -278,6 +278,6 @@ describe("renderStatusLine", () => {
       used_percentage: 75,
     });
     const output = renderStatusLine(input, DEFAULT_CONFIG);
-    expect(strip(output)).toContain("1.5M/2M");
+    expect(strip(output)).toContain("▼:1.5M ▲:0 ▣:2M");
   });
 });

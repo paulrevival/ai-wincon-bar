@@ -31,7 +31,7 @@ const ELEMENT_CHOICES = [
   { name: "Model name ([glm-5.1])", value: "modelName" },
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
   { name: "Percentage (45%)", value: "percent" },
-  { name: "Tokens (95K/200K)", value: "tokens" },
+  { name: "Tokens (▼:90K ▲:5K ▣:200K)", value: "tokens" },
   { name: "Tariff / Rate limits (5h: 12%)", value: "tariff" },
 ] as const;
 

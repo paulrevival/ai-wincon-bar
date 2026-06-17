@@ -4,7 +4,7 @@ import { formatTokens, getColorForPercentage, renderBar } from "./format.js";
 
 /**
  * Render the status line output string.
- * Format: [model] | ▓▓▓▓▓░░░░░ 45% | 90K/200K | 5h: 12%
+ * Format: [model] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
  * Each element is toggleable via config. Tariff hidden when rate_limits absent.
  */
 export function renderStatusLine(
@@ -18,7 +18,6 @@ export function renderStatusLine(
     total_output_tokens,
     context_window_size,
   } = input.context_window;
-  const totalTokens = total_input_tokens + total_output_tokens;
   const color = getColorForPercentage(used_percentage, config.thresholds);
 
   if (config.elements.modelName && input.model) {
@@ -38,7 +37,7 @@ export function renderStatusLine(
 
   if (config.elements.tokens) {
     parts.push(
-      `${formatTokens(totalTokens)}/${formatTokens(context_window_size)}`,
+      `▼:${formatTokens(total_input_tokens)} ▲:${formatTokens(total_output_tokens)} ▣:${formatTokens(context_window_size)}`,
     );
   }
 
