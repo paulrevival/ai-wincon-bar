@@ -9,6 +9,24 @@ import type { WinconBarConfig } from "./types.js";
 import { DEFAULT_CONFIG } from "./constants.js";
 import { saveConfig, updateSettingsStatusLine, loadConfig, clearCache } from "./config.js";
 
+/** Путь назначения SKILL.md. Env-overridable (AI_WINCON_BAR_SKILLS_DIR) для тестов. */
+export function getSkillDestPath(): string {
+  const dir = process.env.AI_WINCON_BAR_SKILLS_DIR
+    ?? join(homedir(), ".claude", "skills", "ai-wincon-bar");
+  return join(dir, "SKILL.md");
+}
+
+/**
+ * Перезаписать dest содержимым src, если оно различается.
+ * true — файл обновлён; false — dest не существует или уже актуален.
+ */
+export function updateSkillFile(destPath: string, srcContent: string): boolean {
+  if (!existsSync(destPath)) return false;
+  if (readFileSync(destPath, "utf-8") === srcContent) return false;
+  writeFileSync(destPath, srcContent, "utf-8");
+  return true;
+}
+
 const ELEMENT_CHOICES = [
   { name: "Model name ([glm-5.1])", value: "modelName" },
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
