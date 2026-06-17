@@ -4,3 +4,7 @@ dist/
 .idea/
 .DS_Store
 .vscode
+
+# Claude Code local artifacts (settings.local.json, memory, worktrees, skills)
+# NOTE: CLAUDE.md is intentionally tracked — it documents the repo for future instances.
+.claude/
