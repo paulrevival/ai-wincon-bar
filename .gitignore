@@ -6,5 +6,7 @@ dist/
 .vscode
 
 # Claude Code local artifacts (settings.local.json, memory, worktrees, skills)
-# NOTE: CLAUDE.md is intentionally tracked — it documents the repo for future instances.
 .claude/
+# Local-only: Claude instructions and working plans/specs
+CLAUDE.md
+/docs
