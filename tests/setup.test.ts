@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { getSkillDestPath, updateSkillFile } from "../src/setup.js";
+import { getSkillDestPath, updateSkillFile, upgradeSkill } from "../src/setup.js";
 
 const TMP_DIR = join(tmpdir(), "ai-wincon-bar-skill-test-" + process.pid);
 
@@ -41,5 +41,22 @@ describe("updateSkillFile", () => {
     writeFileSync(dest, "old", "utf-8");
     expect(updateSkillFile(dest, "new")).toBe(true);
     expect(readFileSync(dest, "utf-8")).toBe("new");
+  });
+});
+
+describe("upgradeSkill", () => {
+  it("is a no-op when bundled source is absent (dev mode) — does not throw", () => {
+    const dest = join(TMP_DIR, "SKILL.md");
+    writeFileSync(dest, "old", "utf-8");
+    // В тестах bundled SKILL.md рядом с dist не существует → resolveBundledSkillPath() = null.
+    expect(() => upgradeSkill()).not.toThrow();
+    expect(readFileSync(dest, "utf-8")).toBe("old");
+  });
+
+  it("does not create the file when not installed", () => {
+    const dest = join(TMP_DIR, "SKILL.md");
+    expect(existsSync(dest)).toBe(false);
+    expect(() => upgradeSkill()).not.toThrow();
+    expect(existsSync(dest)).toBe(false);
   });
 });

@@ -35,30 +35,43 @@ const ELEMENT_CHOICES = [
   { name: "Tariff / Rate limits (5h: 12%)", value: "tariff" },
 ] as const;
 
+/** Путь к bundled SKILL.md либо null, если запущены из исходников (файла рядом нет). */
+function resolveBundledSkillPath(): string | null {
+  const url = fileURLToPath(import.meta.url);
+  // Dev mode (запуск из исходников .ts) — bundled артефакта рядом нет.
+  if (url.endsWith(".ts")) return null;
+  const thisDir = dirname(url);
+  const skillSource = join(thisDir, "..", "SKILL.md");
+  return existsSync(skillSource) ? skillSource : null;
+}
+
 /**
  * Install the SKILL.md file to ~/.claude/skills/ai-wincon-bar/ so that
  * the /ai-wincon-bar skill is available inside Claude Code.
+ * No-op, если уже установлен или запущены из исходников.
  */
 export function installSkill(): void {
-  const skillsDir = join(homedir(), ".claude", "skills", "ai-wincon-bar");
-  const skillDest = join(skillsDir, "SKILL.md");
-
-  // Already installed — skip
+  const skillDest = getSkillDestPath();
   if (existsSync(skillDest)) return;
-
-  // Find SKILL.md bundled with this package (sibling of package root)
-  const thisDir = dirname(fileURLToPath(import.meta.url));
-  const skillSource = join(thisDir, "..", "SKILL.md");
-
-  if (!existsSync(skillSource)) {
-    // Running from source / dev — not a published package
-    return;
-  }
-
-  mkdirSync(skillsDir, { recursive: true });
-  const content = readFileSync(skillSource, "utf-8");
-  writeFileSync(skillDest, content, "utf-8");
+  const skillSource = resolveBundledSkillPath();
+  if (!skillSource) return;
+  mkdirSync(dirname(skillDest), { recursive: true });
+  writeFileSync(skillDest, readFileSync(skillSource, "utf-8"), "utf-8");
   console.log("✅ Skill installed to ~/.claude/skills/ai-wincon-bar/SKILL.md");
+}
+
+/**
+ * Тихо обновить уже установленный SKILL.md до bundled-версии, если содержимое разошлось.
+ * No-op, если файл не установлен (установка — через setup), уже актуален, или запущены из исходников.
+ */
+export function upgradeSkill(): void {
+  const skillDest = getSkillDestPath();
+  if (!existsSync(skillDest)) return;
+  const skillSource = resolveBundledSkillPath();
+  if (!skillSource) return;
+  if (updateSkillFile(skillDest, readFileSync(skillSource, "utf-8"))) {
+    console.log("✅ SKILL.md обновлён до актуальной версии");
+  }
 }
 
 export async function runSetup(

@@ -1,6 +1,6 @@
 import { loadConfig, isConfigured } from "./config.js";
 import { renderStatusLine } from "./render.js";
-import { runSetup } from "./setup.js";
+import { runSetup, upgradeSkill } from "./setup.js";
 import type { ClaudeStatusInput } from "./types.js";
 
 /**
@@ -10,6 +10,7 @@ import type { ClaudeStatusInput } from "./types.js";
  */
 export async function handleInteractive(): Promise<void> {
   console.log("\n🪟 ai-wincon-bar — Context Window Usage Bar\n");
+  upgradeSkill();
 
   if (isConfigured()) {
     const config = loadConfig();
