@@ -14,6 +14,7 @@ import {
   getSettingsPath,
   updateSettingsStatusLine,
   pickRenderData,
+  getProjectId,
 } from "../src/config.js";
 import { DEFAULT_CONFIG } from "../src/constants.js";
 import type { ClaudeStatusInput, WinconBarConfig } from "../src/types.js";
@@ -268,5 +269,28 @@ describe("updateSettingsStatusLine", () => {
       type: "command",
       command: "ai-wincon-bar",
     });
+  });
+});
+
+// ─── getProjectId ────────────────────────────────────────
+
+describe("getProjectId", () => {
+  it("prefers workspace.project_dir", () => {
+    const input = {
+      cwd: "/cwd",
+      workspace: { project_dir: "/project" },
+      context_window: { used_percentage: 1 },
+    } as ClaudeStatusInput;
+    expect(getProjectId(input)).toBe("/project");
+  });
+
+  it("falls back to cwd when workspace.project_dir absent", () => {
+    const input = { cwd: "/cwd", context_window: { used_percentage: 1 } } as ClaudeStatusInput;
+    expect(getProjectId(input)).toBe("/cwd");
+  });
+
+  it("returns __default__ when neither is present", () => {
+    const input = { context_window: { used_percentage: 1 } } as ClaudeStatusInput;
+    expect(getProjectId(input)).toBe("__default__");
   });
 });

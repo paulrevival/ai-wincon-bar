@@ -34,4 +34,8 @@ export const CACHE_TTL_MS = 10_000;
 export interface CacheEntry {
   data: unknown;
   ts: number;
+  session_id?: string;
 }
+
+/** Per-project cache map: { [projectId]: CacheEntry } */
+export type CacheMap = Record<string, CacheEntry>;

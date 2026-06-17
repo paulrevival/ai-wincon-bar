@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
 import type { ClaudeStatusInput } from "./types.js";
 import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
-import type { CacheEntry } from "./constants.js";
+import type { CacheEntry, CacheMap } from "./constants.js";
 
 /** Base directory for all ai-wincon-bar data (config, cache). */
 function getDataDir(): string {
@@ -29,6 +29,11 @@ export function getCachePath(): string {
 
 export function getSettingsPath(): string {
   return process.env.AI_WINCON_BAR_SETTINGS_PATH ?? join(homedir(), ".claude", "settings.json");
+}
+
+/** Идентификатор проекта — ключ в per-project кэше. */
+export function getProjectId(input: ClaudeStatusInput): string {
+  return input.workspace?.project_dir ?? input.cwd ?? "__default__";
 }
 
 /**

@@ -1,6 +1,12 @@
 /** The JSON object Claude Code sends to statusLine command via stdin */
 export interface ClaudeStatusInput {
   session_id?: string;
+  cwd?: string;
+  workspace?: {
+    project_dir?: string;
+    current_dir?: string;
+    [key: string]: unknown;
+  };
   context_window: {
     total_input_tokens: number;
     total_output_tokens: number;
