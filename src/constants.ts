@@ -7,6 +7,7 @@ export const DEFAULT_CONFIG: WinconBarConfig = {
     percent: true,
     tokens: true,
     tariff: true,
+    sessionName: true,
   },
   thresholds: {
     yellow: 50,

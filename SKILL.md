@@ -27,7 +27,8 @@ Context window usage bar for Claude Code's status line.
     "progressBar": true,
     "percent": true,
     "tokens": true,
-    "tariff": true
+    "tariff": true,
+    "sessionName": true
   },
   "thresholds": {
     "yellow": 50,
@@ -44,6 +45,7 @@ Context window usage bar for Claude Code's status line.
 - `percent` — number like `45%`
 - `tokens` — input, output and window size like `▼:90K ▲:5K ▣:200K`
 - `tariff` — rate limit `5h: 12%` (hidden automatically when not available)
+- `sessionName` — directory-basename label like `/my-project` (hidden automatically when no cwd)
 
 **Thresholds** — percentage at which colors change:
 - `yellow` — default 50 (green → yellow)
@@ -60,7 +62,7 @@ When the user invokes this skill, determine what they want and perform the actio
 2. Display current settings in a readable format
 3. Show a preview by constructing sample output:
    ```
-   [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
+   /my-project | [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
    ```
 
 ### Modify config

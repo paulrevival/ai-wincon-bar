@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import type { ClaudeStatusInput, WinconBarConfig } from "./types.js";
 import { ANSI } from "./constants.js";
 import { formatTokens, getColorForPercentage, renderBar } from "./format.js";
@@ -19,6 +20,18 @@ export function renderStatusLine(
     context_window_size,
   } = input.context_window;
   const color = getColorForPercentage(used_percentage, config.thresholds);
+
+  // Session name — basename of the launch directory, rendered first as `/{name}`.
+  // Falls back through project_dir → current_dir; hidden when no name resolves
+  // (sources absent or path is root). Uncolored — it's a label, not a metric.
+  if (config.elements.sessionName) {
+    const dir =
+      input.cwd ?? input.workspace?.project_dir ?? input.workspace?.current_dir;
+    const name = dir ? basename(dir) : "";
+    if (name) {
+      parts.push(`/${name}`);
+    }
+  }
 
   if (config.elements.modelName && input.model) {
     const name = input.model.display_name ?? input.model.id;

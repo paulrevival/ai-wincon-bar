@@ -39,6 +39,8 @@ export interface WinconBarConfig {
     percent: boolean;
     tokens: boolean;
     tariff: boolean;
+    /** Directory-basename session label, rendered first as `/{name}`. */
+    sessionName: boolean;
   };
   thresholds: {
     yellow: number;

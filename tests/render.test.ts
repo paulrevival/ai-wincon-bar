@@ -53,7 +53,7 @@ describe("renderStatusLine", () => {
 
   it("hides model name when element disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: true, percent: true, tokens: true, tariff: false },
+      elements: { modelName: false, progressBar: true, percent: true, tokens: true, tariff: false, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -80,7 +80,7 @@ describe("renderStatusLine", () => {
 
   it("renders only model name when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: true, progressBar: false, percent: false, tokens: false, tariff: false },
+      elements: { modelName: true, progressBar: false, percent: false, tokens: false, tariff: false, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -220,7 +220,7 @@ describe("renderStatusLine", () => {
 
   it("renders only tokens when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: false, percent: false, tokens: true, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: false, tokens: true, tariff: false, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -230,7 +230,7 @@ describe("renderStatusLine", () => {
 
   it("renders only percent when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: false, percent: true, tokens: false, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: true, tokens: false, tariff: false, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -239,7 +239,7 @@ describe("renderStatusLine", () => {
 
   it("renders only progressBar when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: true, percent: false, tokens: false, tariff: false },
+      elements: { modelName: false, progressBar: true, percent: false, tokens: false, tariff: false, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -248,7 +248,7 @@ describe("renderStatusLine", () => {
 
   it("renders only tariff when others disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: false, percent: false, tokens: false, tariff: true },
+      elements: { modelName: false, progressBar: false, percent: false, tokens: false, tariff: true, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const input: ClaudeStatusInput = {
@@ -261,7 +261,7 @@ describe("renderStatusLine", () => {
 
   it("renders empty string when all elements disabled", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: false, percent: false, tokens: false, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: false, tokens: false, tariff: false, sessionName: false },
       thresholds: { yellow: 50, red: 80 },
     };
     const output = renderStatusLine(makeInput(), config);
@@ -279,5 +279,68 @@ describe("renderStatusLine", () => {
     });
     const output = renderStatusLine(input, DEFAULT_CONFIG);
     expect(strip(output)).toContain("▼:1.5M ▲:0 ▣:2M");
+  });
+
+  // ─── Session name ─────────────────────────────────
+
+  it("renders session name from cwd as the first element", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      cwd: "/home/user/ai-wincon-bar",
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toBe(
+      "/ai-wincon-bar | [glm-5.1] | ▓░░░░░░░░░ | 9% | ▼:90K ▲:5K ▣:1M",
+    );
+  });
+
+  it("falls back to workspace.project_dir when cwd is absent", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      workspace: { project_dir: "/projects/foo" },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toContain("/foo |");
+  });
+
+  it("falls back to workspace.current_dir when cwd and project_dir are absent", () => {
+    const input: ClaudeStatusInput = {
+      ...makeInput(),
+      workspace: { current_dir: "/somewhere/bar" },
+    };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).toContain("/bar |");
+  });
+
+  it("hides session name when the path is root (basename empty)", () => {
+    const input: ClaudeStatusInput = { ...makeInput(), cwd: "/" };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    expect(strip(output)).not.toContain("/ |");
+    expect(strip(output)).toMatch(/^\[glm-5\.1\]/);
+  });
+
+  it("hides session name when all directory sources are absent", () => {
+    const output = renderStatusLine(makeInput(), DEFAULT_CONFIG);
+    expect(strip(output)).toMatch(/^\[glm-5\.1\]/);
+  });
+
+  it("hides session name when the toggle is off", () => {
+    const input: ClaudeStatusInput = { ...makeInput(), cwd: "/x/ai-wincon-bar" };
+    const config: WinconBarConfig = {
+      elements: { modelName: true, progressBar: false, percent: false, tokens: false, tariff: false, sessionName: false },
+      thresholds: { yellow: 50, red: 80 },
+    };
+    const output = renderStatusLine(input, config);
+    expect(strip(output)).not.toContain("/ai-wincon-bar");
+  });
+
+  it("session name has no ANSI color codes", () => {
+    const input: ClaudeStatusInput = { ...makeInput(), cwd: "/x/ai-wincon-bar" };
+    const output = renderStatusLine(input, DEFAULT_CONFIG);
+    const namePart = "/ai-wincon-bar";
+    const start = output.indexOf(namePart);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const segment = output.substring(start, start + namePart.length);
+    expect(segment).toBe(namePart); // no ANSI codes wrapping it
   });
 });

@@ -5,13 +5,14 @@
 Displays a compact, color-coded view of your context window and rate limit usage — right in the Claude Code terminal status bar.
 
 ```
-[Sonnet 4.6] | ▓▓▓▓░░░░░░ | 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
+/my-project | [Sonnet 4.6] | ▓▓▓▓░░░░░░ | 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
 ```
 
 ---
 
 ## Features
 
+- **Session name** — directory-basename label (`/my-project`) of where Claude was launched
 - **Model name** — current model in brackets (`[Sonnet 4.6]`)
 - **Progress bar** — visual context window fill (`▓▓▓▓▓░░░░░`)
 - **Percentage** — quick glance at usage (`45%`)
@@ -82,7 +83,8 @@ Stored at `~/.claude/ai-wincon-bar/ai-wincon-bar.json`:
     "progressBar": true,
     "percent": true,
     "tokens": true,
-    "tariff": true
+    "tariff": true,
+    "sessionName": true
   },
   "thresholds": {
     "yellow": 50,
@@ -130,6 +132,7 @@ Toggle which parts of the bar are visible:
 
 | Element | Example | Default |
 |---|---|---|
+| `sessionName` | `/my-project` | ✅ on (hidden when no cwd) |
 | `modelName` | `[Sonnet 4.6]` | ✅ on (hidden when model data unavailable) |
 | `progressBar` | `▓▓▓▓▓░░░░░` | ✅ on |
 | `percent` | `45%` | ✅ on |

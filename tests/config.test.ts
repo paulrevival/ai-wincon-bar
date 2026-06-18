@@ -114,7 +114,7 @@ describe("loadConfig", () => {
 describe("saveConfig + loadConfig round-trip", () => {
   it("saves and loads config correctly", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: false, percent: true, tokens: true, tariff: false },
+      elements: { modelName: false, progressBar: false, percent: true, tokens: true, tariff: false, sessionName: false },
       thresholds: { yellow: 25, red: 60 },
     };
     saveConfig(config);

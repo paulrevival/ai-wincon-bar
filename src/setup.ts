@@ -28,6 +28,7 @@ export function updateSkillFile(destPath: string, srcContent: string): boolean {
 }
 
 const ELEMENT_CHOICES = [
+  { name: "Session name (/ai-wincon-bar)", value: "sessionName" },
   { name: "Model name ([glm-5.1])", value: "modelName" },
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
   { name: "Percentage (45%)", value: "percent" },
@@ -133,6 +134,7 @@ export async function runSetup(
       percent: selectedElements.includes("percent"),
       tokens: selectedElements.includes("tokens"),
       tariff: selectedElements.includes("tariff"),
+      sessionName: selectedElements.includes("sessionName"),
     },
     thresholds: { yellow, red },
   };
