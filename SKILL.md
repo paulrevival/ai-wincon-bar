@@ -1,6 +1,6 @@
 ---
 name: ai-wincon-bar
-description: Use when user wants to configure, check, or modify the ai-wincon-bar status line tool — change displayed elements (progress bar, percent, tokens, tariff), adjust color thresholds, show current config, reset to defaults, or uninstall. Triggers on "ai-wincon-bar", "wincon", "context bar", "status line config", "/ai-wincon-bar".
+description: Use when user wants to configure, check, or modify the ai-wincon-bar status line tool — change displayed elements (progress bar, percent, tokens, 5h/weekly tariff, session time), adjust color thresholds, toggle idle refresh, show current config, reset to defaults, or uninstall. Triggers on "ai-wincon-bar", "wincon", "context bar", "status line config", "/ai-wincon-bar".
 ---
 
 # ai-wincon-bar
@@ -28,7 +28,9 @@ Context window usage bar for Claude Code's status line.
     "percent": true,
     "tokens": true,
     "tariff": true,
-    "sessionName": true
+    "tariffWeekly": true,
+    "sessionName": true,
+    "sessionTime": true
   },
   "thresholds": {
     "yellow": 50,
@@ -40,17 +42,25 @@ Context window usage bar for Claude Code's status line.
 ## What each setting does
 
 **Elements** — toggle which parts of the status line appear:
+- `sessionName` — directory-basename label like `/my-project` (hidden automatically when no cwd)
 - `modelName` — model name like `[Sonnet 4.6]` (hidden automatically when not available)
 - `progressBar` — visual bar `▓▓▓░░░`
 - `percent` — number like `45%`
 - `tokens` — input, output and window size like `▼:90K ▲:5K ▣:200K`
-- `tariff` — rate limit `5h: 12%` (hidden automatically when not available)
-- `sessionName` — directory-basename label like `/my-project` (hidden automatically when no cwd)
+- `tariff` — 5-hour rate limit `5h: 12%` (hidden automatically when not available)
+- `tariffWeekly` — weekly rate limit `7d: 13%` (hidden automatically when not available)
+- `sessionTime` — session wall-clock duration like `⧗ 00h:42m` (hidden automatically when no duration)
 
 **Thresholds** — percentage at which colors change:
 - `yellow` — default 50 (green → yellow)
 - `red` — default 80 (yellow → red)
 - Must satisfy: `yellow < red`
+
+**Idle refresh** (`settings.json`, not the config file) — the optional `refreshInterval`
+field inside `statusLine` (seconds, min 1) re-runs the command on a timer in addition
+to event-driven updates. Without it the bar (and the `sessionTime` clock) freezes while
+the session is idle and only updates on the next turn. It's a local re-render — no API or
+token cost. The setup wizard offers 60 (once a minute, matching the hh:mm display).
 
 ## Actions
 
@@ -62,7 +72,7 @@ When the user invokes this skill, determine what they want and perform the actio
 2. Display current settings in a readable format
 3. Show a preview by constructing sample output:
    ```
-   /my-project | [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
+   /my-project | [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00h:42m
    ```
 
 ### Modify config
@@ -86,10 +96,13 @@ If `~/.claude/ai-wincon-bar/ai-wincon-bar.json` doesn't exist, offer to run the 
    ```json
    "statusLine": {
      "type": "command",
-     "command": "ai-wincon-bar"
+     "command": "ai-wincon-bar",
+     "refreshInterval": 60
    }
    ```
 6. If yes, read `~/.claude/settings.json`, add/update the `statusLine` field, write back.
+   Ask whether to include `refreshInterval` (default 60 seconds) so the session clock
+   keeps ticking while idle; omit the field if they decline.
 
 ### Show status line in settings
 
