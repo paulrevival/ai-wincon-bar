@@ -104,12 +104,19 @@ During `config`, the tool offers to update `~/.claude/settings.json`:
 {
   "statusLine": {
     "type": "command",
-    "command": "ai-wincon-bar"
+    "command": "ai-wincon-bar",
+    "refreshInterval": 60
   }
 }
 ```
 
 You can also set this manually if preferred.
+
+### Idle refresh (`refreshInterval`)
+
+By default Claude Code only re-renders the status line on activity (a new message, `/compact`, etc.), so the **session time** segment freezes while you're idle and only advances on the next turn. The wizard offers to add `refreshInterval` (seconds) to the `statusLine` block, which re-runs the command on a fixed timer — once a minute by default — keeping the clock current even when idle.
+
+This is a **local** re-render (Claude Code pipes the already-known session state to the command): it consumes **no API tokens and no money**, only a negligible process spawn each tick. Omit `refreshInterval` (or decline the wizard prompt) to keep the bar event-driven only.
 
 ## Claude Code Skill
 

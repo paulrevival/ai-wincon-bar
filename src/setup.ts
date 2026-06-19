@@ -27,6 +27,9 @@ export function updateSkillFile(destPath: string, srcContent: string): boolean {
   return true;
 }
 
+/** Default statusLine refreshInterval (seconds) — once a minute, matching hh:mm. */
+const REFRESH_INTERVAL_SEC = 60;
+
 const ELEMENT_CHOICES = [
   { name: "Session name (/ai-wincon-bar)", value: "sessionName" },
   { name: "Model name ([glm-5.1])", value: "modelName" },
@@ -154,7 +157,16 @@ export async function runSetup(
   });
 
   if (shouldUpdateSettings) {
-    updateSettingsStatusLine();
+    // Event-driven updates go quiet while the session is idle, so the session
+    // clock freezes between turns. refreshInterval re-runs the command on a timer
+    // (locally — no API/token cost) to keep it ticking. 60s matches the hh:mm
+    // display granularity.
+    const shouldRefresh = await confirm({
+      message:
+        "Refresh the bar on a timer (once a minute) so the session clock keeps ticking while idle?",
+      default: true,
+    });
+    updateSettingsStatusLine(shouldRefresh ? REFRESH_INTERVAL_SEC : undefined);
     console.log("✅ statusLine updated in ~/.claude/settings.json");
   }
 

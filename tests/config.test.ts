@@ -343,6 +343,32 @@ describe("updateSettingsStatusLine", () => {
       command: "ai-wincon-bar",
     });
   });
+
+  it("nests refreshInterval (seconds) inside statusLine when given", () => {
+    updateSettingsStatusLine(60);
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.statusLine).toEqual({
+      type: "command",
+      command: "ai-wincon-bar",
+      refreshInterval: 60,
+    });
+  });
+
+  it("omits refreshInterval when not given", () => {
+    updateSettingsStatusLine();
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.statusLine.refreshInterval).toBeUndefined();
+  });
+
+  it("drops a previously-set refreshInterval when called without one", () => {
+    const existing = {
+      statusLine: { type: "command", command: "ai-wincon-bar", refreshInterval: 60 },
+    };
+    writeFileSync(getSettingsPath(), JSON.stringify(existing), "utf-8");
+    updateSettingsStatusLine();
+    const settings = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+    expect(settings.statusLine.refreshInterval).toBeUndefined();
+  });
 });
 
 // ─── getProjectId ────────────────────────────────────────

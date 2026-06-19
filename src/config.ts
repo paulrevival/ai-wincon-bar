@@ -178,8 +178,14 @@ export function saveConfig(config: WinconBarConfig): void {
 
 /**
  * Update the statusLine field in ~/.claude/settings.json to point to ai-wincon-bar.
+ *
+ * `refreshIntervalSec` (seconds, Claude Code minimum 1) re-runs the command on a
+ * fixed timer in addition to event-driven updates — needed so time-based segments
+ * (session clock) keep advancing while the session is idle. Omit it to leave the
+ * bar event-driven only; the statusLine object is fully rewritten each call, so
+ * passing nothing also drops any previously-set refreshInterval.
  */
-export function updateSettingsStatusLine(): void {
+export function updateSettingsStatusLine(refreshIntervalSec?: number): void {
   const settingsPath = getSettingsPath();
   let settings: Record<string, unknown> = {};
 
@@ -195,6 +201,7 @@ export function updateSettingsStatusLine(): void {
   settings.statusLine = {
     type: "command",
     command: "ai-wincon-bar",
+    ...(refreshIntervalSec ? { refreshInterval: refreshIntervalSec } : {}),
   };
 
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf-8");
