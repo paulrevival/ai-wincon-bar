@@ -239,6 +239,39 @@ describe("formatSessionsTable", () => {
     expect(formatSessionsTable([])).toMatch(/no sessions/i);
   });
 
+  it("draws a rectangular bordered table with a header row", () => {
+    const records: SessionRecord[] = [
+      rec({ session_id: "s1", project: "/p/alpha", started_at: day(2026, 6, 19), duration_ms: 3_600_000, api_duration_ms: 1_800_000 }),
+    ];
+    const lines = formatSessionsTable(records).split("\n");
+    // Corner borders top and bottom.
+    expect(lines[0].startsWith("┌")).toBe(true);
+    expect(lines[0].endsWith("┐")).toBe(true);
+    expect(lines[lines.length - 1].startsWith("└")).toBe(true);
+    // Every line is the same display width (table is a rectangle).
+    const width = lines[0].length;
+    expect(lines.every((l) => l.length === width)).toBe(true);
+    // Header row carries every column header, framed by verticals.
+    const header = lines.find((l) => l.includes("Day / Project"))!;
+    expect(header.startsWith("│")).toBe(true);
+    expect(header).toContain("wall");
+    expect(header).toContain("api");
+    expect(header).toContain("sessions");
+  });
+
+  it("gives the date a full-width row and rules between data rows", () => {
+    const records: SessionRecord[] = [
+      rec({ session_id: "s1", project: "/p/alpha", started_at: day(2026, 6, 19), duration_ms: 3_600_000, api_duration_ms: 1_800_000 }),
+      rec({ session_id: "s2", project: "/p/beta", started_at: day(2026, 6, 19), duration_ms: 600_000, api_duration_ms: 60_000 }),
+    ];
+    const lines = formatSessionsTable(records).split("\n");
+    // Date spans the whole table — only the two outer verticals, no column splits.
+    const dateLine = lines.find((l) => l.includes("2026-06-19"))!;
+    expect((dateLine.match(/│/g) || []).length).toBe(2);
+    // 3 data rows (alpha, beta, Day total) → 2 inter-row separators (┼).
+    expect(lines.filter((l) => l.includes("┼")).length).toBe(2);
+  });
+
   it("renders day header, project row, durations and a day-total line", () => {
     const records: SessionRecord[] = [
       rec({ session_id: "s1", project: "/p/alpha", started_at: day(2026, 6, 19), duration_ms: 3_600_000, api_duration_ms: 1_800_000 }),

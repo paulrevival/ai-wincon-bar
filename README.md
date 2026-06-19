@@ -75,12 +75,17 @@ a **wall-clock** column (total session duration, including idle) and an
 **api** column (active time spent waiting on the model):
 
 ```
-             wall      api      sessions
-
-2026-06-19
-  my-project 02h:15m  00h:48m   3
-  other      00h:40m  00h:12m   1
-  Day total  02h:55m  01h:00m   4
+┌───────────────┬─────────┬─────────┬──────────┐
+│ Day / Project │ wall    │ api     │ sessions │
+├───────────────┴─────────┴─────────┴──────────┤
+│ 2026-06-19                                    │
+├───────────────┬─────────┬─────────┬──────────┤
+│ my-project    │ 02h:15m │ 00h:48m │ 3        │
+├───────────────┼─────────┼─────────┼──────────┤
+│ other         │ 00h:40m │ 00h:12m │ 1        │
+├───────────────┼─────────┼─────────┼──────────┤
+│ Day total     │ 02h:55m │ 01h:00m │ 4        │
+└───────────────┴─────────┴─────────┴──────────┘
 ```
 
 ```bash

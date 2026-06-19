@@ -175,32 +175,60 @@ function pad(s: string, width: number): string {
 }
 
 /**
- * Render the grouped table: per day, a per-project breakdown plus a
- * "Day total" line, with two duration columns (wall-clock and active API time).
+ * Render the grouped table inside box-drawing borders. Each day is a full-width
+ * section header row; below it a per-project breakdown plus a "Day total" line,
+ * with a horizontal rule between every data row. Two duration columns
+ * (wall-clock and active API time). Column widths are computed from the content
+ * so the table is a clean rectangle.
+ *
+ * Plain text (printed straight to the terminal), not Markdown.
  */
 export function formatSessionsTable(records: SessionRecord[]): string {
   if (records.length === 0) return "No sessions recorded for this range.";
 
   const groups = aggregateSessions(records);
   const DAY_TOTAL = "Day total";
-  const nameWidth = Math.max(
-    DAY_TOTAL.length,
-    ...groups.flatMap((g) => g.projects.map((p) => p.name.length)),
-  );
+  const HEAD = ["Day / Project", "wall", "api", "sessions"];
 
-  const lines: string[] = [];
-  lines.push(`${pad("", nameWidth)}    wall      api      sessions`);
+  // Size each column from its cells (the day spans all columns, so it is sized
+  // by the full inner width, not the label column).
+  const cols: string[][] = [[HEAD[0]], [HEAD[1]], [HEAD[2]], [HEAD[3]]];
   for (const g of groups) {
-    lines.push("");
-    lines.push(g.day);
     for (const p of g.projects) {
-      lines.push(
-        `  ${pad(p.name, nameWidth)}  ${pad(formatDuration(p.durationMs), 8)} ${pad(formatDuration(p.apiMs), 8)}  ${p.count}`,
-      );
+      cols[0].push(p.name);
+      cols[1].push(formatDuration(p.durationMs));
+      cols[2].push(formatDuration(p.apiMs));
+      cols[3].push(String(p.count));
     }
-    lines.push(
-      `  ${pad(DAY_TOTAL, nameWidth)}  ${pad(formatDuration(g.durationMs), 8)} ${pad(formatDuration(g.apiMs), 8)}  ${g.count}`,
-    );
+    cols[0].push(DAY_TOTAL);
+    cols[1].push(formatDuration(g.durationMs));
+    cols[2].push(formatDuration(g.apiMs));
+    cols[3].push(String(g.count));
   }
+  const w = cols.map((col) => Math.max(...col.map((s) => s.length)));
+  // Inner width of a full-width (merged) row: all cells + the verticals between.
+  const fullW = w.reduce((sum, width) => sum + width + 2, 0) + (w.length - 1);
+
+  const rule = (l: string, m: string, r: string): string =>
+    l + w.map((width) => "─".repeat(width + 2)).join(m) + r;
+  const row = (cells: string[]): string =>
+    "│" + cells.map((c, i) => " " + pad(c, w[i]) + " ").join("│") + "│";
+  const fullRow = (text: string): string => "│" + pad(" " + text, fullW) + "│";
+
+  const lines: string[] = [rule("┌", "┬", "┐"), row(HEAD)];
+  for (const g of groups) {
+    lines.push(rule("├", "┴", "┤")); // close columns into a full-width band
+    lines.push(fullRow(g.day));
+    lines.push(rule("├", "┬", "┤")); // reopen the columns
+    const rows = [
+      ...g.projects.map((p) => [p.name, formatDuration(p.durationMs), formatDuration(p.apiMs), String(p.count)]),
+      [DAY_TOTAL, formatDuration(g.durationMs), formatDuration(g.apiMs), String(g.count)],
+    ];
+    rows.forEach((r, ri) => {
+      if (ri > 0) lines.push(rule("├", "┼", "┤"));
+      lines.push(row(r));
+    });
+  }
+  lines.push(rule("└", "┴", "┘"));
   return lines.join("\n");
 }
