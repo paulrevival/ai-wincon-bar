@@ -248,7 +248,7 @@ describe("renderStatusLine", () => {
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
     expect(strip(output)).toBe(
-      "[glm-5.1] | ▓░░░░░░░░░ 9% | ▼:90K ▲:5K ▣:1M | ⧗ 00:42",
+      "[glm-5.1] | ▓░░░░░░░░░ 9% | ▼:90K ▲:5K ▣:1M | ⧗ 00h:42m",
     );
   });
 
@@ -276,10 +276,10 @@ describe("renderStatusLine", () => {
   it("session time has no ANSI color codes", () => {
     const input: ClaudeStatusInput = {
       ...makeInput(),
-      cost: { total_duration_ms: 3_600_000 }, // 1h → 01:00
+      cost: { total_duration_ms: 3_600_000 }, // 1h → 01h:00m
     };
     const output = renderStatusLine(input, DEFAULT_CONFIG);
-    const part = "⧗ 01:00";
+    const part = "⧗ 01h:00m";
     const start = output.indexOf(part);
     expect(start).toBeGreaterThanOrEqual(0);
     expect(output.substring(start, start + part.length)).toBe(part);

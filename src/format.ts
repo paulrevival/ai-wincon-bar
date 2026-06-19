@@ -16,15 +16,15 @@ export function formatTokens(n: number): string {
 }
 
 /**
- * Format a millisecond duration as "hh:mm".
+ * Format a millisecond duration as "{hh}h:{mm}m".
  * Seconds are truncated; hours accumulate without a day rollover or upper cap.
- * 2_520_000 → "00:42", 3_600_000 → "01:00", 93_900_000 → "26:05".
+ * 2_520_000 → "00h:42m", 3_600_000 → "01h:00m", 93_900_000 → "26h:05m".
  */
 export function formatDuration(ms: number): string {
   const totalMinutes = Math.floor(ms / 60_000);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return `${String(hours).padStart(2, "0")}h:${String(minutes).padStart(2, "0")}m`;
 }
 
 /**

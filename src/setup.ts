@@ -35,7 +35,7 @@ const ELEMENT_CHOICES = [
   { name: "Tokens (▼:90K ▲:5K ▣:200K)", value: "tokens" },
   { name: "Tariff / Rate limits (5h: 12%)", value: "tariff" },
   { name: "Weekly limit (7d: 13%)", value: "tariffWeekly" },
-  { name: "Session time (⧗ 00:42)", value: "sessionTime" },
+  { name: "Session time (⧗ 00h:42m)", value: "sessionTime" },
 ] as const;
 
 /** Путь к bundled SKILL.md либо null, если запущены из исходников (файла рядом нет). */

@@ -5,7 +5,7 @@
 Displays a compact, color-coded view of your context window and rate limit usage — right in the Claude Code terminal status bar.
 
 ```
-/my-project | [Sonnet 4.6] | ▓▓▓▓░░░░░░ | 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
+/my-project | [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00h:42m
 ```
 
 ---
@@ -17,7 +17,8 @@ Displays a compact, color-coded view of your context window and rate limit usage
 - **Progress bar** — visual context window fill (`▓▓▓▓▓░░░░░`)
 - **Percentage** — quick glance at usage (`45%`)
 - **Token counter** — input, output and window size (`▼:90K ▲:5K ▣:200K`)
-- **Rate limit indicator** — 5-hour usage tier from API (`5h: 12%`)
+- **Rate limit indicators** — 5-hour and weekly usage tiers from API (`5h: 12%`, `7d: 13%`)
+- **Session time** — wall-clock duration of the session (`⧗ 00h:42m`)
 - **Color thresholds** — green → yellow → red as you approach the limit
 - **Interactive config** — toggle elements, set thresholds, auto-update settings
 - **Cache fallback** — smooths over brief zero-bursts (e.g. during `/compact`) without flickering; **scoped per project**, so `/clear` never shows stale tokens and two Claude Code projects running side-by-side never clobber each other's cache
@@ -84,7 +85,9 @@ Stored at `~/.claude/ai-wincon-bar/ai-wincon-bar.json`:
     "percent": true,
     "tokens": true,
     "tariff": true,
-    "sessionName": true
+    "tariffWeekly": true,
+    "sessionName": true,
+    "sessionTime": true
   },
   "thresholds": {
     "yellow": 50,
@@ -137,7 +140,9 @@ Toggle which parts of the bar are visible:
 | `progressBar` | `▓▓▓▓▓░░░░░` | ✅ on |
 | `percent` | `45%` | ✅ on |
 | `tokens` | `▼:90K ▲:5K ▣:200K` | ✅ on |
-| `tariff` | `5h: 12%` | ✅ on (hidden when no rate limit data) |
+| `tariff` | `5h: 12%` | ✅ on (hidden when no 5h rate limit data) |
+| `tariffWeekly` | `7d: 13%` | ✅ on (hidden when no 7d rate limit data) |
+| `sessionTime` | `⧗ 00h:42m` | ✅ on (hidden when no duration data) |
 
 ### Thresholds
 

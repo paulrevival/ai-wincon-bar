@@ -60,7 +60,7 @@ export interface WinconBarConfig {
     tariffWeekly: boolean;
     /** Directory-basename session label, rendered first as `/{name}`. */
     sessionName: boolean;
-    /** Session wall-clock duration as `⧗ hh:mm`, rendered last. */
+    /** Session wall-clock duration as `⧗ 00h:42m`, rendered last. */
     sessionTime: boolean;
   };
   thresholds: {

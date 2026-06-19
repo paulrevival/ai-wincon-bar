@@ -10,7 +10,7 @@ import {
 
 /**
  * Render the status line output string.
- * Format: /name | [model] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00:42
+ * Format: /name | [model] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00h:42m
  * Each element is toggleable via config. Bar and percent share one space-joined
  * segment. Tariffs hidden when their rate_limits entry is absent; session time
  * hidden when cost.total_duration_ms is absent or zero.
