@@ -2,6 +2,12 @@ import { createRequire } from "node:module";
 import { Command } from "commander";
 import { runUninstall } from "./uninstall.js";
 import { handleInteractive } from "./interactive.js";
+import {
+  readSessionLog,
+  recordsInRange,
+  formatSessionsTable,
+  localDateKey,
+} from "./sessions.js";
 
 const pkg = createRequire(import.meta.url)("../package.json");
 
@@ -19,6 +25,14 @@ export function createProgram(): Command {
     .action(() => handleInteractive());
 
   program
+    .command("sessions")
+    .description("Show recorded session times grouped by day")
+    .option("--today", "only sessions started today")
+    .option("--since <date>", "from date YYYY-MM-DD (inclusive)")
+    .option("--until <date>", "to date YYYY-MM-DD (inclusive)")
+    .action((opts) => showSessions(opts));
+
+  program
     .command("uninstall")
     .description("Remove config, skill, and uninstall the npm package")
     .action(() => runUninstall());
@@ -29,6 +43,20 @@ export function createProgram(): Command {
     .action(() => showHelp());
 
   return program;
+}
+
+interface SessionsOptions {
+  today?: boolean;
+  since?: string;
+  until?: string;
+}
+
+function showSessions(opts: SessionsOptions): void {
+  const records = Object.values(readSessionLog());
+  const range = opts.today
+    ? { since: localDateKey(Date.now()), until: localDateKey(Date.now()) }
+    : { since: opts.since, until: opts.until };
+  console.log(formatSessionsTable(recordsInRange(records, range)));
 }
 
 function showHelp(): void {
@@ -42,6 +70,8 @@ Usage:
 Commands:
   config                 Setup wizard — choose elements, set thresholds,
                          update settings.json, install skill
+  sessions               Show recorded session times grouped by day
+                         (--today | --since <date> | --until <date>)
   uninstall              Remove all config files, skill, statusLine entry,
                          and uninstall the npm package
   help                   Show this help message

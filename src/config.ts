@@ -27,6 +27,10 @@ export function getCachePath(): string {
   return join(getDataDir(), "cache.json");
 }
 
+export function getSessionsPath(): string {
+  return join(getDataDir(), "sessions.json");
+}
+
 export function getSettingsPath(): string {
   return process.env.AI_WINCON_BAR_SETTINGS_PATH ?? join(homedir(), ".claude", "settings.json");
 }

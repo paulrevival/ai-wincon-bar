@@ -62,8 +62,37 @@ npm run build && npm link      # or run `npm run dev` (watch) in another termina
 |---|---|
 | `ai-wincon-bar` | Show current config + preview, or run setup wizard |
 | `ai-wincon-bar config` | Interactive setup wizard |
+| `ai-wincon-bar sessions` | Show recorded session times grouped by day (`--today`, `--since`, `--until`) |
 | `ai-wincon-bar uninstall` | Remove config, skill, statusLine entry, and npm package |
 | `ai-wincon-bar help` | Show available commands |
+
+### Session time report
+
+While the status line renders, the tool records each session's elapsed time to
+`~/.claude/ai-wincon-bar/sessions.json` (keyed by `session_id`). `ai-wincon-bar
+sessions` reads that log and prints a per-day table, broken down by project, with
+a **wall-clock** column (total session duration, including idle) and an
+**api** column (active time spent waiting on the model):
+
+```
+             wall      api      sessions
+
+2026-06-19
+  my-project 02h:15m  00h:48m   3
+  other      00h:40m  00h:12m   1
+  Day total  02h:55m  01h:00m   4
+```
+
+```bash
+ai-wincon-bar sessions                    # all recorded days
+ai-wincon-bar sessions --today            # only today
+ai-wincon-bar sessions --since 2026-06-01 # from a date (inclusive)
+ai-wincon-bar sessions --until 2026-06-15 # to a date (inclusive)
+```
+
+Recording keys off `cost.total_duration_ms`, so it's most accurate with idle
+refresh enabled (see [`refreshInterval`](#idle-refresh-refreshinterval)). Records
+older than a week are pruned automatically.
 
 ## How It Works
 

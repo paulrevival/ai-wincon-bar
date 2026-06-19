@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createProgram } from "./cli.js";
 import { loadConfig, pickRenderData } from "./config.js";
+import { recordSession } from "./sessions.js";
 import { renderStatusLine } from "./render.js";
 import { handleInteractive } from "./interactive.js";
 import type { ClaudeStatusInput } from "./types.js";
@@ -28,6 +29,10 @@ function handleStatusLineRender(): void {
   try {
     const input = readFileSync(process.stdin.fd, "utf-8");
     const data: ClaudeStatusInput = JSON.parse(input);
+
+    // Persist this session's wall-clock / API time for the `sessions` report.
+    // Self-silencing; gated on session_id + a positive duration internally.
+    recordSession(data);
 
     const dataToRender = pickRenderData(data);
 

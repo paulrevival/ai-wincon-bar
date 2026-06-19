@@ -1,6 +1,6 @@
 ---
 name: ai-wincon-bar
-description: Use when user wants to configure, check, or modify the ai-wincon-bar status line tool — change displayed elements (progress bar, percent, tokens, 5h/weekly tariff, session time), adjust color thresholds, toggle idle refresh, show current config, reset to defaults, or uninstall. Triggers on "ai-wincon-bar", "wincon", "context bar", "status line config", "/ai-wincon-bar".
+description: Use when user wants to configure, check, or modify the ai-wincon-bar status line tool — change displayed elements (progress bar, percent, tokens, 5h/weekly tariff, session time), adjust color thresholds, toggle idle refresh, report session times per day, show current config, reset to defaults, or uninstall. Triggers on "ai-wincon-bar", "wincon", "context bar", "status line config", "/ai-wincon-bar".
 ---
 
 # ai-wincon-bar
@@ -13,6 +13,7 @@ Context window usage bar for Claude Code's status line.
 |---|---|
 | Config | `~/.claude/ai-wincon-bar/ai-wincon-bar.json` |
 | Cache | `~/.claude/ai-wincon-bar/cache.json` |
+| Sessions log | `~/.claude/ai-wincon-bar/sessions.json` |
 | Skill | `~/.claude/skills/ai-wincon-bar/SKILL.md` |
 | Settings | `~/.claude/settings.json` (field: `statusLine`) |
 
@@ -104,6 +105,19 @@ If `~/.claude/ai-wincon-bar/ai-wincon-bar.json` doesn't exist, offer to run the 
    Ask whether to include `refreshInterval` (default 60 seconds) so the session clock
    keeps ticking while idle; omit the field if they decline.
 
+### Show session times
+
+If the user asks about session times, time spent, or a per-day report, read
+`~/.claude/ai-wincon-bar/sessions.json` (a map keyed by `session_id`; each record
+has `project`, `started_at`, `last_seen`, `duration_ms` wall-clock, and
+`api_duration_ms` active time — all in ms). Group by the local day of
+`started_at`, break each day down by project, and show a per-day total. Render two
+duration columns: **wall** (`duration_ms`) and **api** (`api_duration_ms`),
+formatted as `hh:mm`. Filter to the requested range (e.g. today) when asked.
+
+Alternatively, run `ai-wincon-bar sessions [--today | --since YYYY-MM-DD | --until
+YYYY-MM-DD]` via Bash and show its output verbatim.
+
 ### Show status line in settings
 
 If the user asks about whether the status line is active, check `~/.claude/settings.json` for the `statusLine` field and report its current state.
@@ -123,8 +137,9 @@ If the user asks to uninstall or remove ai-wincon-bar:
 If the user asks for help or available commands, show:
 
 ```
-ai-wincon-bar          Show config or run setup wizard
-ai-wincon-bar config   Same as above
-ai-wincon-bar help     Show available commands
-ai-wincon-bar uninstall  Remove everything and uninstall
+ai-wincon-bar           Show config or run setup wizard
+ai-wincon-bar config    Same as above
+ai-wincon-bar sessions  Session times per day (--today|--since|--until)
+ai-wincon-bar help      Show available commands
+ai-wincon-bar uninstall Remove everything and uninstall
 ```
