@@ -1,12 +1,19 @@
 import { basename } from "node:path";
 import type { ClaudeStatusInput, WinconBarConfig } from "./types.js";
-import { ANSI } from "./constants.js";
-import { formatTokens, getColorForPercentage, renderBar } from "./format.js";
+import { ANSI, TIME_GLYPH } from "./constants.js";
+import {
+  formatTokens,
+  getColorForPercentage,
+  renderBar,
+  formatDuration,
+} from "./format.js";
 
 /**
  * Render the status line output string.
- * Format: [model] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12%
- * Each element is toggleable via config. Tariff hidden when rate_limits absent.
+ * Format: /name | [model] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00:42
+ * Each element is toggleable via config. Bar and percent share one space-joined
+ * segment. Tariffs hidden when their rate_limits entry is absent; session time
+ * hidden when cost.total_duration_ms is absent or zero.
  */
 export function renderStatusLine(
   input: ClaudeStatusInput,
@@ -40,12 +47,17 @@ export function renderStatusLine(
     }
   }
 
+  // Bar + percent share one segment joined by a single space (no " | " between
+  // them); the meter reads as one unit. Either can be toggled independently.
+  const meter: string[] = [];
   if (config.elements.progressBar) {
-    parts.push(`${color}${renderBar(used_percentage)}${ANSI.reset}`);
+    meter.push(`${color}${renderBar(used_percentage)}${ANSI.reset}`);
   }
-
   if (config.elements.percent) {
-    parts.push(`${color}${Math.round(used_percentage)}%${ANSI.reset}`);
+    meter.push(`${color}${Math.round(used_percentage)}%${ANSI.reset}`);
+  }
+  if (meter.length) {
+    parts.push(meter.join(" "));
   }
 
   if (config.elements.tokens) {
@@ -58,6 +70,18 @@ export function renderStatusLine(
     const tariffPct = Math.round(input.rate_limits.five_hour.used_percentage);
     const tariffColor = getColorForPercentage(tariffPct, config.thresholds);
     parts.push(`${tariffColor}5h: ${tariffPct}%${ANSI.reset}`);
+  }
+
+  if (config.elements.tariffWeekly && input.rate_limits?.seven_day) {
+    const weeklyPct = Math.round(input.rate_limits.seven_day.used_percentage);
+    const weeklyColor = getColorForPercentage(weeklyPct, config.thresholds);
+    parts.push(`${weeklyColor}7d: ${weeklyPct}%${ANSI.reset}`);
+  }
+
+  // Session wall-clock time — last element, uncolored reference stat.
+  // Hidden when the duration is absent or zero.
+  if (config.elements.sessionTime && input.cost?.total_duration_ms) {
+    parts.push(`${TIME_GLYPH} ${formatDuration(input.cost.total_duration_ms)}`);
   }
 
   return parts.join(" | ");

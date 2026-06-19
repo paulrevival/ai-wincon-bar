@@ -34,6 +34,8 @@ const ELEMENT_CHOICES = [
   { name: "Percentage (45%)", value: "percent" },
   { name: "Tokens (▼:90K ▲:5K ▣:200K)", value: "tokens" },
   { name: "Tariff / Rate limits (5h: 12%)", value: "tariff" },
+  { name: "Weekly limit (7d: 13%)", value: "tariffWeekly" },
+  { name: "Session time (⧗ 00:42)", value: "sessionTime" },
 ] as const;
 
 /** Путь к bundled SKILL.md либо null, если запущены из исходников (файла рядом нет). */
@@ -134,7 +136,9 @@ export async function runSetup(
       percent: selectedElements.includes("percent"),
       tokens: selectedElements.includes("tokens"),
       tariff: selectedElements.includes("tariff"),
+      tariffWeekly: selectedElements.includes("tariffWeekly"),
       sessionName: selectedElements.includes("sessionName"),
+      sessionTime: selectedElements.includes("sessionTime"),
     },
     thresholds: { yellow, red },
   };

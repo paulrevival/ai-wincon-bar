@@ -16,6 +16,18 @@ export function formatTokens(n: number): string {
 }
 
 /**
+ * Format a millisecond duration as "hh:mm".
+ * Seconds are truncated; hours accumulate without a day rollover or upper cap.
+ * 2_520_000 → "00:42", 3_600_000 → "01:00", 93_900_000 → "26:05".
+ */
+export function formatDuration(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+/**
  * Return ANSI color code based on percentage and thresholds.
  */
 export function getColorForPercentage(

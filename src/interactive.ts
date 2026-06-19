@@ -28,6 +28,11 @@ export async function handleInteractive(): Promise<void> {
       },
       model: { id: "claude-sonnet-4-6", display_name: "Sonnet 4.6" },
       cwd: "/home/user/my-project",
+      cost: { total_duration_ms: 42 * 60 * 1000 },
+      rate_limits: {
+        five_hour: { used_percentage: 12, resets_at: 0 },
+        seven_day: { used_percentage: 13, resets_at: 0 },
+      },
     };
     console.log("\nPreview:");
     console.log(renderStatusLine(sampleInput, config));

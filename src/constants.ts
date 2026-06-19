@@ -7,7 +7,9 @@ export const DEFAULT_CONFIG: WinconBarConfig = {
     percent: true,
     tokens: true,
     tariff: true,
+    tariffWeekly: true,
     sessionName: true,
+    sessionTime: true,
   },
   thresholds: {
     yellow: 50,
@@ -27,6 +29,9 @@ export const ANSI = {
 export const BAR_FILLED = "▓";
 export const BAR_EMPTY = "░";
 export const BAR_WIDTH = 10;
+
+/** Glyph prefixing the session-time element. Filled, text-presentation. */
+export const TIME_GLYPH = "⧗";
 
 /**
  * How long a cached context reading can still back up a zero-payload.

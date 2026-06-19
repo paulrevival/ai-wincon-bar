@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTokens, getColorForPercentage, renderBar } from "../src/format.js";
+import { formatTokens, getColorForPercentage, renderBar, formatDuration } from "../src/format.js";
 import { ANSI } from "../src/constants.js";
 
 describe("formatTokens", () => {
@@ -29,6 +29,40 @@ describe("formatTokens", () => {
 
   it("does not format negative values as K/M (not expected in practice)", () => {
     expect(formatTokens(-1000)).toBe("-1000");
+  });
+});
+
+describe("formatDuration", () => {
+  it("formats sub-hour durations as 00:mm", () => {
+    expect(formatDuration(42 * 60_000)).toBe("00:42");
+    expect(formatDuration(5 * 60_000)).toBe("00:05");
+  });
+
+  it("formats zero as 00:00", () => {
+    expect(formatDuration(0)).toBe("00:00");
+  });
+
+  it("floors trailing seconds", () => {
+    // 42 min 44.5 s → 00:42
+    expect(formatDuration(2_564_546)).toBe("00:42");
+    // 59 s → 00:00
+    expect(formatDuration(59_000)).toBe("00:00");
+  });
+
+  it("formats exactly one hour as 01:00", () => {
+    expect(formatDuration(60 * 60_000)).toBe("01:00");
+  });
+
+  it("zero-pads hours and minutes to two digits", () => {
+    expect(formatDuration((2 * 60 + 5) * 60_000)).toBe("02:05");
+  });
+
+  it("does not roll over into days past 24h", () => {
+    expect(formatDuration((26 * 60 + 5) * 60_000)).toBe("26:05");
+  });
+
+  it("does not cap hours at two digits", () => {
+    expect(formatDuration((100 * 60 + 42) * 60_000)).toBe("100:42");
   });
 });
 
