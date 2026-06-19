@@ -7,12 +7,17 @@ import { formatDuration } from "./format.js";
 /**
  * One persisted session, keyed by session_id in sessions.json.
  *
- * `duration_ms` / `api_duration_ms` mirror Claude Code's cumulative
- * `cost.total_duration_ms` (wall-clock since session start, incl. idle) and
- * `cost.total_api_duration_ms` (active time waiting on the model). Both are
- * monotonic, so the largest reading seen for a session is its final total.
- * `started_at` is estimated once as `now - duration_ms` at first sighting so the
- * session lands on the day it actually began, even if logging started mid-session.
+ * Claude Code's `cost.total_duration_ms` / `total_api_duration_ms` are
+ * per-*process*, not per-session: they keep climbing across `/clear`, which only
+ * rotates the session_id. Storing those absolutes verbatim makes the new
+ * post-`/clear` record overlap the previous one, and `aggregateSessions` (which
+ * sums per project/day) then double-counts the shared time.
+ *
+ * To avoid that, each record stores only its own slice: `baseline_ms` /
+ * `baseline_api_ms` capture the process readings at the session's first sighting,
+ * and `duration_ms` / `api_duration_ms` are the (monotonic, max-tracked) delta
+ * above that baseline. `started_at` is set once to first-sighting time, so the
+ * session buckets onto the day we actually began observing it.
  */
 export interface SessionRecord {
   session_id: string;
@@ -21,6 +26,10 @@ export interface SessionRecord {
   last_seen: number;
   duration_ms: number;
   api_duration_ms: number;
+  /** Process `total_duration_ms` at first sighting; subtracted to get the slice. */
+  baseline_ms?: number;
+  /** Process `total_api_duration_ms` at first sighting. */
+  baseline_api_ms?: number;
 }
 
 export type SessionLog = Record<string, SessionRecord>;
@@ -55,7 +64,9 @@ export function readSessionLog(): SessionLog {
  *
  * Called from the silent status-line render path, so it must never throw.
  * No-op unless the payload carries a session_id and a positive
- * cost.total_duration_ms. Durations are kept at their max so a stray smaller
+ * cost.total_duration_ms. The stored duration is the delta above the session's
+ * first-sighting baseline (see SessionRecord) so `/clear`-rotated sessions in the
+ * same process don't overlap. Deltas are kept at their max so a stray smaller
  * reading (or a zero-burst) can't shrink a session. Expired records are pruned
  * on write.
  */
@@ -70,16 +81,20 @@ export function recordSession(input: ClaudeStatusInput, now = Date.now()): void 
     const existing = log[sessionId];
     if (existing) {
       existing.last_seen = now;
-      existing.duration_ms = Math.max(existing.duration_ms, duration);
-      existing.api_duration_ms = Math.max(existing.api_duration_ms, api);
+      const base = existing.baseline_ms ?? 0;
+      const baseApi = existing.baseline_api_ms ?? 0;
+      existing.duration_ms = Math.max(existing.duration_ms, duration - base);
+      existing.api_duration_ms = Math.max(existing.api_duration_ms, api - baseApi);
     } else {
       log[sessionId] = {
         session_id: sessionId,
         project: getProjectId(input),
-        started_at: now - duration,
+        started_at: now,
         last_seen: now,
-        duration_ms: duration,
-        api_duration_ms: api,
+        duration_ms: 0,
+        api_duration_ms: 0,
+        baseline_ms: duration,
+        baseline_api_ms: api,
       };
     }
 

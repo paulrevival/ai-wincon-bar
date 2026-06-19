@@ -101,32 +101,49 @@ describe("readSessionLog", () => {
 // ─── recordSession ───────────────────────────────────────
 
 describe("recordSession", () => {
-  it("creates a new record with started_at = now - duration", () => {
+  it("baselines a new record to zero at started_at = now", () => {
     recordSession(makeInput("S", 600_000, 120_000), 1_000_000);
     const r = readRaw().S;
-    expect(r.started_at).toBe(400_000);
+    expect(r.started_at).toBe(1_000_000);
     expect(r.last_seen).toBe(1_000_000);
-    expect(r.duration_ms).toBe(600_000);
-    expect(r.api_duration_ms).toBe(120_000);
+    expect(r.duration_ms).toBe(0);
+    expect(r.api_duration_ms).toBe(0);
     expect(r.project).toBe("/test/project");
   });
 
-  it("upserts by session_id, taking max duration and updating last_seen", () => {
+  it("accumulates the delta from the first-sighting baseline", () => {
     recordSession(makeInput("S", 600_000, 120_000), 1_000_000);
     recordSession(makeInput("S", 900_000, 200_000), 2_000_000);
     const r = readRaw().S;
-    expect(r.duration_ms).toBe(900_000);
-    expect(r.api_duration_ms).toBe(200_000);
+    expect(r.duration_ms).toBe(300_000); // 900_000 - 600_000
+    expect(r.api_duration_ms).toBe(80_000); // 200_000 - 120_000
     expect(r.last_seen).toBe(2_000_000);
-    expect(r.started_at).toBe(400_000); // preserved from first sighting
+    expect(r.started_at).toBe(1_000_000); // preserved from first sighting
   });
 
   it("never shrinks duration on a smaller reading", () => {
+    recordSession(makeInput("S", 600_000, 120_000), 1_000_000);
     recordSession(makeInput("S", 900_000, 200_000), 2_000_000);
     recordSession(makeInput("S", 100_000, 10_000), 3_000_000);
     const r = readRaw().S;
-    expect(r.duration_ms).toBe(900_000);
-    expect(r.api_duration_ms).toBe(200_000);
+    expect(r.duration_ms).toBe(300_000);
+    expect(r.api_duration_ms).toBe(80_000);
+  });
+
+  it("does not double-count when /clear rotates session_id mid-process", () => {
+    // Claude Code's total_duration_ms is per-process and keeps climbing across
+    // /clear; only the session_id rotates. Each record must own just its own slice.
+    recordSession(makeInput("A", 600_000, 120_000), 1_000_000);
+    recordSession(makeInput("A", 900_000, 200_000), 1_300_000); // A → 900s
+    // /clear: new session B, process clock continues from ~900s.
+    recordSession(makeInput("B", 900_000, 200_000), 1_400_000);
+    recordSession(makeInput("B", 1_100_000, 260_000), 1_600_000); // B → 1100s
+    const raw = readRaw();
+    expect(raw.A.duration_ms).toBe(300_000); // 900 - 600 (own observed slice)
+    expect(raw.B.duration_ms).toBe(200_000); // 1100 - 900, NOT 1100
+    expect(raw.B.api_duration_ms).toBe(60_000); // 260 - 200
+    // Sum is the real elapsed time, with no overlap between A and B.
+    expect(raw.A.duration_ms + raw.B.duration_ms).toBe(500_000);
   });
 
   it("keeps independent records per session_id", () => {
@@ -162,7 +179,7 @@ describe("recordSession", () => {
   it("does not throw on a malformed existing file", () => {
     writeFileSync(getSessionsPath(), "not json{{{", "utf-8");
     expect(() => recordSession(makeInput("S", 600_000), 1_000_000)).not.toThrow();
-    expect(readRaw().S.duration_ms).toBe(600_000);
+    expect(readRaw().S.duration_ms).toBe(0);
   });
 });
 
