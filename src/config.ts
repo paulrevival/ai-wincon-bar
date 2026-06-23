@@ -4,7 +4,8 @@ import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
 import type { ClaudeStatusInput } from "./types.js";
 import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
-import type { CacheMap } from "./constants.js";
+import type { CacheMap, CacheEntry } from "./constants.js";
+import { readRecentCompactPostTokens } from "./compact.js";
 
 /** Base directory for all ai-wincon-bar data (config, cache). */
 function getDataDir(): string {
@@ -82,10 +83,10 @@ function evictExpired(map: CacheMap): CacheMap {
  * (сброс после /clear; теперь per-project).
  * Legacy-формат { data, ts } трактуется как отсутствие кэша.
  */
-export function readCache(
+export function readCacheEntry(
   currentSessionId?: string,
   projectId?: string,
-): ClaudeStatusInput | null {
+): CacheEntry | null {
   const map = readCacheMap();
   const key = projectId ?? "__default__";
   const entry = map[key];
@@ -96,7 +97,14 @@ export function readCache(
   if (currentSessionId && entry.session_id && entry.session_id !== currentSessionId) {
     return null;
   }
-  return data;
+  return entry;
+}
+
+export function readCache(
+  currentSessionId?: string,
+  projectId?: string,
+): ClaudeStatusInput | null {
+  return (readCacheEntry(currentSessionId, projectId)?.data as ClaudeStatusInput) ?? null;
 }
 
 /**
@@ -134,14 +142,55 @@ export function clearCache(): void {
  * brief gaps (e.g. during /compact) don't blank the bar. After /clear the session
  * changes, so a stale entry from the previous session is ignored. Different
  * projects keep independent cache slots.
+ *
+ * /compact keeps the same session_id, so the cached reading would otherwise linger
+ * pre-compact until the next request. On a zero burst we therefore check the
+ * transcript for a compaction newer than the cached reading and, if found, replace
+ * the stale token counts with the recorded post-compact size (persisting it so the
+ * next bursts don't re-scan).
  */
 export function pickRenderData(input: ClaudeStatusInput): ClaudeStatusInput {
   if (input.context_window.used_percentage > 0) {
     writeCache(input);
     return input;
   }
-  const cached = readCache(input.session_id, getProjectId(input));
-  return cached ?? input;
+  const entry = readCacheEntry(input.session_id, getProjectId(input));
+  if (!entry) return input;
+  const cached = entry.data as ClaudeStatusInput;
+  if (input.transcript_path) {
+    const postTokens = readRecentCompactPostTokens(input.transcript_path, entry.ts);
+    if (postTokens !== null) {
+      const corrected = applyPostCompactTokens(cached, postTokens);
+      writeCache(corrected);
+      return corrected;
+    }
+  }
+  return cached;
+}
+
+/**
+ * Rebuild a cached reading to reflect a post-/compact context size: the recorded
+ * postTokens become the input total, output resets to zero (no request has run
+ * against the compacted context yet), and the percentages follow. Model/cost/
+ * rate-limit fields are preserved from the last real reading.
+ */
+function applyPostCompactTokens(
+  data: ClaudeStatusInput,
+  postTokens: number,
+): ClaudeStatusInput {
+  const size = data.context_window.context_window_size;
+  const used = size > 0 ? (postTokens / size) * 100 : 0;
+  return {
+    ...data,
+    context_window: {
+      ...data.context_window,
+      total_input_tokens: postTokens,
+      total_output_tokens: 0,
+      used_percentage: used,
+      remaining_percentage: 100 - used,
+      current_usage: undefined,
+    },
+  };
 }
 
 /**

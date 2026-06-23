@@ -1,6 +1,8 @@
 /** The JSON object Claude Code sends to statusLine command via stdin */
 export interface ClaudeStatusInput {
   session_id?: string;
+  /** Path to the session's transcript JSONL — used to detect a recent /compact. */
+  transcript_path?: string;
   cwd?: string;
   workspace?: {
     project_dir?: string;

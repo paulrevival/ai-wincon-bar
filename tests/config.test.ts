@@ -301,6 +301,75 @@ describe("pickRenderData", () => {
   });
 });
 
+// ─── pickRenderData: post-/compact correction via transcript ──────
+
+describe("pickRenderData + /compact", () => {
+  function withSession(
+    input: ClaudeStatusInput,
+    session_id: string,
+    project = "/test/project",
+  ): ClaudeStatusInput {
+    return { ...input, session_id, workspace: { project_dir: project }, cwd: project };
+  }
+
+  /** Manually seed a cache entry with an explicit timestamp. */
+  function seedCache(data: ClaudeStatusInput, ts: number, session_id: string, project = "/test/project") {
+    writeFileSync(getCachePath(), JSON.stringify({ [project]: { data, ts, session_id } }), "utf-8");
+  }
+
+  /** Write a transcript with one compact_boundary at the given epoch-ms. */
+  function writeTranscript(boundaryMs: number, postTokens: number): string {
+    const path = join(TMP_DIR, "transcript.jsonl");
+    const line = JSON.stringify({
+      type: "system",
+      subtype: "compact_boundary",
+      timestamp: new Date(boundaryMs).toISOString(),
+      compactMetadata: { trigger: "manual", preTokens: 500_000, postTokens },
+    });
+    writeFileSync(path, line + "\n", "utf-8");
+    return path;
+  }
+
+  it("shows post-compact postTokens on a zero burst after /compact", () => {
+    const cacheTs = Date.now() - 60_000;
+    seedCache(withSession(makeInput(50, 500_000), "S"), cacheTs, "S");
+    const transcript = writeTranscript(cacheTs + 30_000, 20_000);
+    const burst = { ...withSession(makeInput(0, 0), "S"), transcript_path: transcript };
+
+    const result = pickRenderData(burst);
+
+    expect(result.context_window.total_input_tokens).toBe(20_000);
+    expect(result.context_window.used_percentage).toBe(2); // 20K / 1M
+  });
+
+  it("persists the corrected reading back to cache", () => {
+    const cacheTs = Date.now() - 60_000;
+    seedCache(withSession(makeInput(50, 500_000), "S"), cacheTs, "S");
+    const transcript = writeTranscript(cacheTs + 30_000, 20_000);
+    const burst = { ...withSession(makeInput(0, 0), "S"), transcript_path: transcript };
+
+    pickRenderData(burst);
+
+    expect(readCache("S", "/test/project")?.context_window.total_input_tokens).toBe(20_000);
+  });
+
+  it("does NOT correct when the boundary predates the cached reading", () => {
+    const cacheTs = Date.now();
+    seedCache(withSession(makeInput(50, 500_000), "S"), cacheTs, "S");
+    const transcript = writeTranscript(cacheTs - 60_000, 20_000);
+    const burst = { ...withSession(makeInput(0, 0), "S"), transcript_path: transcript };
+
+    expect(pickRenderData(burst).context_window.used_percentage).toBe(50);
+  });
+
+  it("falls back to plain cache when no transcript_path is given", () => {
+    const cacheTs = Date.now() - 60_000;
+    seedCache(withSession(makeInput(50, 500_000), "S"), cacheTs, "S");
+
+    expect(pickRenderData(withSession(makeInput(0, 0), "S")).context_window.used_percentage).toBe(50);
+  });
+});
+
 // ─── updateSettingsStatusLine ────────────────────────────
 
 describe("updateSettingsStatusLine", () => {
