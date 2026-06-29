@@ -40,10 +40,17 @@
     "context-window",
     "ai"
   ],
+  "author": "paulrevival",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paulrevival/ai-wincon-bar.git"
+    "url": "git+https://github.com/paulrevival/ai-wincon-bar.git"
   },
-  "homepage": "https://github.com/paulrevival/ai-wincon-bar"
+  "bugs": {
+    "url": "https://github.com/paulrevival/ai-wincon-bar/issues"
+  },
+  "homepage": "https://github.com/paulrevival/ai-wincon-bar#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
