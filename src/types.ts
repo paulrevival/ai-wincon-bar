@@ -50,7 +50,7 @@ export interface ClaudeStatusInput {
   [key: string]: unknown;
 }
 
-/** The config file stored at ~/.claude/ai-wincon-bar.json */
+/** The config file stored at ~/.claude/ai-wincon-bar/ai-wincon-bar.json */
 export interface WinconBarConfig {
   elements: {
     modelName: boolean;

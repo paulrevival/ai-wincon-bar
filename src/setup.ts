@@ -6,7 +6,6 @@ import checkbox from "@inquirer/checkbox";
 import confirm from "@inquirer/confirm";
 import inputNum from "@inquirer/number";
 import type { WinconBarConfig } from "./types.js";
-import { DEFAULT_CONFIG } from "./constants.js";
 import { saveConfig, updateSettingsStatusLine, loadConfig, clearCache } from "./config.js";
 
 /** Путь назначения SKILL.md. Env-overridable (AI_WINCON_BAR_SKILLS_DIR) для тестов. */
@@ -31,8 +30,8 @@ export function updateSkillFile(destPath: string, srcContent: string): boolean {
 const REFRESH_INTERVAL_SEC = 60;
 
 const ELEMENT_CHOICES = [
-  { name: "Session name (/ai-wincon-bar)", value: "sessionName" },
-  { name: "Model name ([glm-5.1])", value: "modelName" },
+  { name: "Session name (/my-project)", value: "sessionName" },
+  { name: "Model name ([Sonnet 4.6])", value: "modelName" },
   { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
   { name: "Percentage (45%)", value: "percent" },
   { name: "Tokens (▼:90K ▲:5K ▣:200K)", value: "tokens" },
@@ -148,7 +147,7 @@ export async function runSetup(
 
   saveConfig(newConfig);
   clearCache();
-  console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar/config.json`);
+  console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar/ai-wincon-bar.json`);
 
   // 4. Update settings.json
   const shouldUpdateSettings = await confirm({

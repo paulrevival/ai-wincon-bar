@@ -194,7 +194,7 @@ function applyPostCompactTokens(
 }
 
 /**
- * Load config from ~/.claude/ai-wincon-bar/config.json, merging with defaults.
+ * Load config from ~/.claude/ai-wincon-bar/ai-wincon-bar.json, merging with defaults.
  * Returns DEFAULT_CONFIG if file doesn't exist or is malformed.
  */
 export function loadConfig(): WinconBarConfig {
@@ -221,7 +221,7 @@ export function loadConfig(): WinconBarConfig {
 }
 
 /**
- * Save config to ~/.claude/ai-wincon-bar/config.json.
+ * Save config to ~/.claude/ai-wincon-bar/ai-wincon-bar.json.
  */
 export function saveConfig(config: WinconBarConfig): void {
   ensureDataDir();

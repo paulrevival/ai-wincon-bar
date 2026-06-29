@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { spawnSync } from "node:child_process";
 import confirm from "@inquirer/confirm";
-import { getConfigPath, getCachePath, getSettingsPath } from "./config.js";
+import { getConfigPath, getSettingsPath } from "./config.js";
 
 export async function runUninstall(): Promise<void> {
   console.log("\n🗑️  ai-wincon-bar uninstall\n");

@@ -34,7 +34,7 @@ export function createProgram(): Command {
 
   program
     .command("uninstall")
-    .description("Remove config, skill, and uninstall the npm package")
+    .description("Remove config, skill, statusLine entry, and uninstall the npm package")
     .action(() => runUninstall());
 
   program
