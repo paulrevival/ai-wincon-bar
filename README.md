@@ -2,8 +2,6 @@
 
 **Context window usage bar for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) status line.**
 
-Displays a compact, color-coded view of your context window and rate limit usage — right in the Claude Code terminal status bar.
-
 ```
 /my-project | [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00h:42m
 ```
@@ -21,7 +19,8 @@ Displays a compact, color-coded view of your context window and rate limit usage
 - **Session time** — wall-clock duration of the session (`⧗ 00h:42m`)
 - **Color thresholds** — green → yellow → red as you approach the limit
 - **Interactive config** — toggle elements, set thresholds, auto-update settings
-- **Cache fallback** — smooths over brief zero-bursts (e.g. during `/compact`) without flickering; **scoped per project**, so `/clear` never shows stale tokens and two Claude Code projects running side-by-side never clobber each other's cache
+- **Session time report** — `ai-wincon-bar sessions` tabulates wall-clock & API time per day and project
+- **Cache fallback** — smooths brief zero-bursts (e.g. `/compact`) without flicker; per-project, so `/clear` and side-by-side projects never show stale tokens
 
 ## Quick Start
 
@@ -33,11 +32,11 @@ npm install -g @paulrevival/ai-wincon-bar
 ai-wincon-bar config
 ```
 
-That's it — restart Claude Code and the bar appears in your status line.
+Restart Claude Code and the bar appears in your status line.
 
-## Install from source (no GitHub / npm registry)
+## Install from source
 
-If you've cloned the repo (or just want to install a local build globally instead of pulling from npm):
+Install a local build globally instead of pulling from npm:
 
 ```bash
 # from the repository root
@@ -46,15 +45,13 @@ npm run build        # compile src/ → dist/index.js
 npm install -g .     # install the built package globally (ships dist/ + SKILL.md)
 ```
 
-`ai-wincon-bar` now points at your local build. If you already had it configured, run `ai-wincon-bar config` once afterwards — this also auto-updates the installed `SKILL.md` to match the bundled one. Restart Claude Code.
+`ai-wincon-bar` now points at your local build. Run `ai-wincon-bar config` once to refresh settings (it also syncs the installed `SKILL.md`), then restart Claude Code.
 
 **To pick up edits without reinstalling** (rebuild → live):
 
 ```bash
 npm run build && npm link      # or run `npm run dev` (watch) in another terminal
 ```
-
-> `npm install -g .` uses the already-built `dist/` — it does **not** run `npm run build` for you. Always build first, then install.
 
 ## Commands
 
@@ -144,11 +141,9 @@ During `config`, the tool offers to update `~/.claude/settings.json`:
 }
 ```
 
-You can also set this manually if preferred.
-
 ### Idle refresh (`refreshInterval`)
 
-By default Claude Code only re-renders the status line on activity (a new message, `/compact`, etc.), so the **session time** segment freezes while you're idle and only advances on the next turn. The wizard offers to add `refreshInterval` (seconds) to the `statusLine` block, which re-runs the command on a fixed timer — once a minute by default — keeping the clock current even when idle.
+By default Claude Code only re-renders the status line on activity (a new message, `/compact`, etc.), so the **session time** segment freezes while you're idle. The wizard offers to add `refreshInterval` (seconds) to the `statusLine` block, which re-runs the command on a fixed timer — once a minute by default — keeping the clock current even when idle.
 
 This is a **local** re-render (Claude Code pipes the already-known session state to the command): it consumes **no API tokens and no money**, only a negligible process spawn each tick. Omit `refreshInterval` (or decline the wizard prompt) to keep the bar event-driven only.
 
@@ -191,8 +186,8 @@ Control when colors change:
 
 | Threshold | Default | Effect |
 |---|---|---|
-| `yellow` | `50` | Bar turns yellow at 50% usage |
-| `red` | `80` | Bar turns red at 80% usage |
+| `yellow` | `50` | Bar, percent and tariffs turn yellow at 50% |
+| `red` | `80` | Bar, percent and tariffs turn red at 80% |
 
 ## Custom Config Directory
 
