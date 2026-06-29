@@ -4,7 +4,7 @@
   "description": "Context window usage bar for Claude Code status line",
   "type": "module",
   "bin": {
-    "ai-wincon-bar": "./dist/index.js"
+    "ai-wincon-bar": "dist/index.js"
   },
   "files": [
     "dist",
