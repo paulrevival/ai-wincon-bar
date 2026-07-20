@@ -36,7 +36,8 @@ Context window usage bar for Claude Code's status line.
   "thresholds": {
     "yellow": 50,
     "red": 80
-  }
+  },
+  "sessionRetentionDays": 14
 }
 ```
 
@@ -56,6 +57,11 @@ Context window usage bar for Claude Code's status line.
 - `yellow` — default 50 (green → yellow)
 - `red` — default 80 (yellow → red)
 - Must satisfy: `yellow < red`
+
+**Session retention** — `sessionRetentionDays` (default 14) is how many days a
+`sessions.json` record survives before being pruned on the next write. Set higher
+to keep more history in `ai-wincon-bar sessions`; a non-positive or invalid value
+falls back to the default.
 
 **Idle refresh** (`settings.json`, not the config file) — the optional `refreshInterval`
 field inside `statusLine` (seconds, min 1) re-runs the command on a timer in addition
@@ -82,7 +88,8 @@ Use AskUserQuestion to ask the user what they want to change. Options:
 
 1. **Toggle elements** — ask which elements to enable/disable (multiSelect)
 2. **Adjust thresholds** — ask for new yellow and red values (ensure yellow < red)
-3. **Reset to defaults** — yellow=50, red=80, all elements enabled
+3. **Session retention** — set `sessionRetentionDays` (whole days, ≥1)
+4. **Reset to defaults** — yellow=50, red=80, retention=14, all elements enabled
 
 After confirmation, write the updated config to `~/.claude/ai-wincon-bar/ai-wincon-bar.json` using the Write tool.
 
@@ -92,7 +99,8 @@ If `~/.claude/ai-wincon-bar/ai-wincon-bar.json` doesn't exist, offer to run the 
 1. Ask which elements to show (multiSelect, all checked by default)
 2. Ask yellow threshold (default 50)
 3. Ask red threshold (default 80)
-4. Save config to `~/.claude/ai-wincon-bar/ai-wincon-bar.json`
+4. Ask session retention in days (default 14)
+5. Save config to `~/.claude/ai-wincon-bar/ai-wincon-bar.json`
 5. Ask if they want to update `~/.claude/settings.json` to add:
    ```json
    "statusLine": {

@@ -1,5 +1,11 @@
 import type { WinconBarConfig } from "./types.js";
 
+/** Milliseconds in one day. Shared by sessions retention math. */
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Default sessions.json retention, in days. */
+export const DEFAULT_SESSION_RETENTION_DAYS = 14;
+
 export const DEFAULT_CONFIG: WinconBarConfig = {
   elements: {
     modelName: true,
@@ -15,6 +21,7 @@ export const DEFAULT_CONFIG: WinconBarConfig = {
     yellow: 50,
     red: 80,
   },
+  sessionRetentionDays: DEFAULT_SESSION_RETENTION_DAYS,
 };
 
 export const CONFIG_FILENAME = "ai-wincon-bar.json";

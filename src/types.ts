@@ -69,4 +69,6 @@ export interface WinconBarConfig {
     yellow: number;
     red: number;
   };
+  /** How many days a sessions.json record survives before being pruned. */
+  sessionRetentionDays: number;
 }

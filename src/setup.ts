@@ -130,7 +130,19 @@ export async function runSetup(
     break;
   }
 
-  // 3. Build and save config
+  // 3. Session retention (days) — bounds how long sessions.json keeps records.
+  const sessionRetentionDays = await inputNum({
+    message: "Session retention (days) for the `sessions` report:",
+    default: config.sessionRetentionDays,
+    min: 1,
+  });
+
+  if (sessionRetentionDays == null) {
+    console.error("\n❌ Setup cancelled.");
+    return;
+  }
+
+  // 4. Build and save config
   const newConfig: WinconBarConfig = {
     elements: {
       modelName: selectedElements.includes("modelName"),
@@ -143,13 +155,14 @@ export async function runSetup(
       sessionTime: selectedElements.includes("sessionTime"),
     },
     thresholds: { yellow, red },
+    sessionRetentionDays,
   };
 
   saveConfig(newConfig);
   clearCache();
   console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar/ai-wincon-bar.json`);
 
-  // 4. Update settings.json
+  // 5. Update settings.json
   const shouldUpdateSettings = await confirm({
     message: "Update ~/.claude/settings.json to enable the status line?",
     default: true,
@@ -169,7 +182,7 @@ export async function runSetup(
     console.log("✅ statusLine updated in ~/.claude/settings.json");
   }
 
-  // 5. Install skill
+  // 6. Install skill
   const shouldInstallSkill = await confirm({
     message: "Install /ai-wincon-bar skill? This lets you configure the bar from within Claude Code.",
     default: true,

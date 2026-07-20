@@ -3,6 +3,7 @@ import { basename, dirname } from "node:path";
 import type { ClaudeStatusInput } from "./types.js";
 import { getSessionsPath, getProjectId } from "./config.js";
 import { formatDuration } from "./format.js";
+import { DEFAULT_SESSION_RETENTION_DAYS, MS_PER_DAY } from "./constants.js";
 
 /**
  * One persisted session, keyed by session_id in sessions.json.
@@ -34,8 +35,11 @@ export interface SessionRecord {
 
 export type SessionLog = Record<string, SessionRecord>;
 
-/** Drop records whose last_seen is older than this (bounds file growth). */
-const RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+/**
+ * Default retention cutoff (ms) — records whose last_seen is older are pruned.
+ * Bounds file growth; overridable per-call via `recordSession`'s `retentionMs`.
+ */
+const DEFAULT_RETENTION_MS = DEFAULT_SESSION_RETENTION_DAYS * MS_PER_DAY;
 
 /** Local calendar day of an epoch timestamp, as `YYYY-MM-DD`. */
 export function localDateKey(ts: number): string {
@@ -67,10 +71,14 @@ export function readSessionLog(): SessionLog {
  * cost.total_duration_ms. The stored duration is the delta above the session's
  * first-sighting baseline (see SessionRecord) so `/clear`-rotated sessions in the
  * same process don't overlap. Deltas are kept at their max so a stray smaller
- * reading (or a zero-burst) can't shrink a session. Expired records are pruned
- * on write.
+ * reading (or a zero-burst) can't shrink a session. Records older than
+ * `retentionMs` (default from config; ~14 days) are pruned on write.
  */
-export function recordSession(input: ClaudeStatusInput, now = Date.now()): void {
+export function recordSession(
+  input: ClaudeStatusInput,
+  now = Date.now(),
+  retentionMs: number = DEFAULT_RETENTION_MS,
+): void {
   try {
     const sessionId = input.session_id;
     const duration = input.cost?.total_duration_ms;
@@ -99,7 +107,7 @@ export function recordSession(input: ClaudeStatusInput, now = Date.now()): void 
     }
 
     for (const key of Object.keys(log)) {
-      if (now - log[key].last_seen > RETENTION_MS) delete log[key];
+      if (now - log[key].last_seen > retentionMs) delete log[key];
     }
 
     const path = getSessionsPath();

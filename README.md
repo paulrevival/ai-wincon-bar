@@ -94,7 +94,8 @@ ai-wincon-bar sessions --until 2026-06-15 # to a date (inclusive)
 
 Recording keys off `cost.total_duration_ms`, so it's most accurate with idle
 refresh enabled (see [`refreshInterval`](#idle-refresh-refreshinterval)). Records
-older than a week are pruned automatically.
+older than `sessionRetentionDays` (14 days by default, set in the config file or
+via the wizard) are pruned automatically.
 
 ## How It Works
 
@@ -123,7 +124,8 @@ Stored at `~/.claude/ai-wincon-bar/ai-wincon-bar.json`:
   "thresholds": {
     "yellow": 50,
     "red": 80
-  }
+  },
+  "sessionRetentionDays": 14
 }
 ```
 

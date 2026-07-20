@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
 import type { ClaudeStatusInput } from "./types.js";
-import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS } from "./constants.js";
+import { DEFAULT_CONFIG, CONFIG_FILENAME, CACHE_TTL_MS, DEFAULT_SESSION_RETENTION_DAYS } from "./constants.js";
 import type { CacheMap, CacheEntry } from "./constants.js";
 import { readRecentCompactPostTokens } from "./compact.js";
 
@@ -194,6 +194,18 @@ function applyPostCompactTokens(
 }
 
 /**
+ * Coerce a raw config value into a positive whole-day retention, falling back to
+ * the default when it is missing or nonsensical (NaN, ≤0, fractional). Retention
+ * multiplies into a millisecond cutoff, so a bad value would silently break
+ * pruning — this keeps it sane.
+ */
+function resolveRetentionDays(value: unknown): number {
+  return Number.isFinite(value as number) && (value as number) >= 1
+    ? Math.floor(value as number)
+    : DEFAULT_SESSION_RETENTION_DAYS;
+}
+
+/**
  * Load config from ~/.claude/ai-wincon-bar/ai-wincon-bar.json, merging with defaults.
  * Returns DEFAULT_CONFIG if file doesn't exist or is malformed.
  */
@@ -214,6 +226,7 @@ export function loadConfig(): WinconBarConfig {
         ...DEFAULT_CONFIG.thresholds,
         ...parsed.thresholds,
       },
+      sessionRetentionDays: resolveRetentionDays(parsed.sessionRetentionDays),
     };
   } catch {
     return { ...DEFAULT_CONFIG };

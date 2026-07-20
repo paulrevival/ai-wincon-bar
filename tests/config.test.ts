@@ -91,6 +91,7 @@ describe("loadConfig", () => {
     const config = loadConfig();
     expect(config.thresholds).toEqual({ yellow: 30, red: 70 });
     expect(config.elements).toEqual(DEFAULT_CONFIG.elements);
+    expect(config.sessionRetentionDays).toBe(DEFAULT_CONFIG.sessionRetentionDays);
   });
 
   it("merges partial elements with defaults", () => {
@@ -111,11 +112,40 @@ describe("loadConfig", () => {
   });
 });
 
+// ─── sessionRetentionDays ────────────────────────────────
+
+describe("loadConfig: sessionRetentionDays", () => {
+  it("merges a custom value", () => {
+    writeFileSync(getConfigPath(), JSON.stringify({ sessionRetentionDays: 30 }), "utf-8");
+    expect(loadConfig().sessionRetentionDays).toBe(30);
+  });
+
+  it("falls back to default for missing or invalid values", () => {
+    const cases = [
+      {},
+      { sessionRetentionDays: 0 },
+      { sessionRetentionDays: -3 },
+      { sessionRetentionDays: "7" },
+      { sessionRetentionDays: null },
+    ];
+    for (const cfg of cases) {
+      writeFileSync(getConfigPath(), JSON.stringify(cfg), "utf-8");
+      expect(loadConfig().sessionRetentionDays).toBe(DEFAULT_CONFIG.sessionRetentionDays);
+    }
+  });
+
+  it("floors a fractional retention to whole days", () => {
+    writeFileSync(getConfigPath(), JSON.stringify({ sessionRetentionDays: 9.9 }), "utf-8");
+    expect(loadConfig().sessionRetentionDays).toBe(9);
+  });
+});
+
 describe("saveConfig + loadConfig round-trip", () => {
   it("saves and loads config correctly", () => {
     const config: WinconBarConfig = {
       elements: { modelName: false, progressBar: false, percent: true, tokens: true, tariff: false, tariffWeekly: false, sessionName: false, sessionTime: false },
       thresholds: { yellow: 25, red: 60 },
+      sessionRetentionDays: 21,
     };
     saveConfig(config);
     expect(loadConfig()).toEqual(config);

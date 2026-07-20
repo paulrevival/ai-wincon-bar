@@ -4,6 +4,7 @@ import { loadConfig, pickRenderData } from "./config.js";
 import { recordSession } from "./sessions.js";
 import { renderStatusLine } from "./render.js";
 import { handleInteractive } from "./interactive.js";
+import { MS_PER_DAY } from "./constants.js";
 import type { ClaudeStatusInput } from "./types.js";
 
 async function main(): Promise<void> {
@@ -30,13 +31,14 @@ function handleStatusLineRender(): void {
     const input = readFileSync(process.stdin.fd, "utf-8");
     const data: ClaudeStatusInput = JSON.parse(input);
 
+    const config = loadConfig();
+
     // Persist this session's wall-clock / API time for the `sessions` report.
     // Self-silencing; gated on session_id + a positive duration internally.
-    recordSession(data);
+    // Retention follows config.sessionRetentionDays (default 14).
+    recordSession(data, undefined, config.sessionRetentionDays * MS_PER_DAY);
 
     const dataToRender = pickRenderData(data);
-
-    const config = loadConfig();
     const output = renderStatusLine(dataToRender, config);
     process.stdout.write(output);
   } catch {

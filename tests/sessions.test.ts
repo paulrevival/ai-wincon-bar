@@ -164,16 +164,30 @@ describe("recordSession", () => {
     expect(existsSync(getSessionsPath())).toBe(false);
   });
 
-  it("prunes records older than a week on write", () => {
+  it("prunes records older than the given retention on write", () => {
     const now = day(2026, 6, 19);
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
     const seed = {
-      stale: rec({ session_id: "stale", last_seen: now - weekMs - 60_000, duration_ms: 1 }),
+      stale: rec({ session_id: "stale", last_seen: now - sevenDays - 60_000, duration_ms: 1 }),
+      fresh: rec({ session_id: "fresh", last_seen: now - 60_000, duration_ms: 1 }),
+    };
+    writeFileSync(getSessionsPath(), JSON.stringify(seed), "utf-8");
+    recordSession(makeInput("new", 600_000), now, sevenDays);
+    expect(Object.keys(readRaw()).sort()).toEqual(["fresh", "new"]);
+  });
+
+  it("defaults to a 14-day retention when none is passed", () => {
+    const now = day(2026, 6, 19);
+    const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+    const seed = {
+      weekOld: rec({ session_id: "weekOld", last_seen: now - 7 * 24 * 60 * 60 * 1000, duration_ms: 1 }),
+      fortnightOld: rec({ session_id: "fortnightOld", last_seen: now - fourteenDays - 60_000, duration_ms: 1 }),
       fresh: rec({ session_id: "fresh", last_seen: now - 60_000, duration_ms: 1 }),
     };
     writeFileSync(getSessionsPath(), JSON.stringify(seed), "utf-8");
     recordSession(makeInput("new", 600_000), now);
-    expect(Object.keys(readRaw()).sort()).toEqual(["fresh", "new"]);
+    // A 7-day-old record survives the 14-day default; a 15-day-old one is pruned.
+    expect(Object.keys(readRaw()).sort()).toEqual(["fresh", "new", "weekOld"]);
   });
 
   it("does not throw on a malformed existing file", () => {
