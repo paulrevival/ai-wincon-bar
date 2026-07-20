@@ -3,6 +3,7 @@ import { createProgram } from "./cli.js";
 import { loadConfig, pickRenderData } from "./config.js";
 import { recordSession } from "./sessions.js";
 import { renderStatusLine } from "./render.js";
+import { appendRenderLog } from "./render-log.js";
 import { handleInteractive } from "./interactive.js";
 import { MS_PER_DAY } from "./constants.js";
 import type { ClaudeStatusInput } from "./types.js";
@@ -32,6 +33,10 @@ function handleStatusLineRender(): void {
     const data: ClaudeStatusInput = JSON.parse(input);
 
     const config = loadConfig();
+
+    // TEMP diagnostic (see TODO.md): log every render to learn why some days
+    // record no sessions. Self-silencing; remove once the cause is confirmed.
+    appendRenderLog(data);
 
     // Persist this session's wall-clock / API time for the `sessions` report.
     // Self-silencing; gated on session_id + a positive duration internally.

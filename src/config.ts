@@ -32,6 +32,11 @@ export function getSessionsPath(): string {
   return join(getDataDir(), "sessions.json");
 }
 
+/** Path to the temporary status-line render audit log (see TODO.md). */
+export function getRenderLogPath(): string {
+  return join(getDataDir(), "render.log");
+}
+
 export function getSettingsPath(): string {
   return process.env.AI_WINCON_BAR_SETTINGS_PATH ?? join(homedir(), ".claude", "settings.json");
 }
