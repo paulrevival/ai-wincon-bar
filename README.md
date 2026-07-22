@@ -36,6 +36,14 @@ can also run `/statusline` to inspect the native result.
 
 Codex CLI 0.129.0 or newer is required for Codex integration.
 
+### Upgrading from 0.1.x
+
+After upgrading, run `ai-wincon-bar config` again to select Claude Code, Codex,
+or both and install the matching chat skills. Existing Claude config, cache,
+and session history are copied from `~/.claude/ai-wincon-bar` to the shared
+config directory on first use; the original files remain available for
+rollback.
+
 ## Install from source
 
 ```bash
