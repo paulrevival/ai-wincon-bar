@@ -16,7 +16,7 @@ export function createProgram(): Command {
 
   program
     .name("ai-wincon-bar")
-    .description("Context window usage bar for Claude Code status line")
+    .description("Context window status line configurator for Claude Code and Codex")
     .version(pkg.version);
 
   program
@@ -26,7 +26,7 @@ export function createProgram(): Command {
 
   program
     .command("sessions")
-    .description("Show recorded session times grouped by day")
+    .description("Show recorded Claude Code session times grouped by day")
     .option("--today", "only sessions started today")
     .option("--since <date>", "from date YYYY-MM-DD (inclusive)")
     .option("--until <date>", "to date YYYY-MM-DD (inclusive)")
@@ -61,7 +61,7 @@ function showSessions(opts: SessionsOptions): void {
 
 function showHelp(): void {
   console.log(`
-🪟 ai-wincon-bar — Context Window Usage Bar for Claude Code
+🪟 ai-wincon-bar — Context Status Lines for Claude Code and Codex
 
 Usage:
   ai-wincon-bar          Run the setup wizard (same as 'config')
@@ -70,13 +70,13 @@ Usage:
 Commands:
   config                 Setup wizard — choose elements, set thresholds,
                          update settings.json, install skill
-  sessions               Show recorded session times grouped by day
+  sessions               Show recorded Claude Code session times grouped by day
                          (--today | --since <date> | --until <date>)
   uninstall              Remove all config files, skill, statusLine entry,
                          and uninstall the npm package
   help                   Show this help message
 
-Status line mode:
+Claude Code render mode:
   When Claude Code pipes JSON to stdin (non-TTY), the tool renders
   the status bar and outputs it to stdout. This happens automatically.
 
@@ -84,7 +84,8 @@ Examples:
   ai-wincon-bar config       # first-time setup or reconfigure
   ai-wincon-bar uninstall    # remove everything and uninstall
 
-Config:  ~/.claude/ai-wincon-bar/ai-wincon-bar.json
-Skill:   ~/.claude/skills/ai-wincon-bar/SKILL.md
+Config:       ~/.config/ai-wincon-bar/ai-wincon-bar.json
+Claude skill: ~/.claude/skills/ai-wincon-bar/SKILL.md
+Codex skill:  ~/.codex/skills/ai-wincon-bar/SKILL.md
 `);
 }

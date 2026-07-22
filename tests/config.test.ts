@@ -143,7 +143,8 @@ describe("loadConfig: sessionRetentionDays", () => {
 describe("saveConfig + loadConfig round-trip", () => {
   it("saves and loads config correctly", () => {
     const config: WinconBarConfig = {
-      elements: { modelName: false, progressBar: false, percent: true, tokens: true, tariff: false, tariffWeekly: false, sessionName: false, sessionTime: false },
+      ...DEFAULT_CONFIG,
+      elements: { ...DEFAULT_CONFIG.elements, modelName: false, progressBar: false, percent: true, tokens: true, tariff: false, tariffWeekly: false, sessionName: false, sessionTime: false },
       thresholds: { yellow: 25, red: 60 },
       sessionRetentionDays: 21,
     };

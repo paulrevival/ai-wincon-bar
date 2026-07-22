@@ -50,8 +50,12 @@ export interface ClaudeStatusInput {
   [key: string]: unknown;
 }
 
-/** The config file stored at ~/.claude/ai-wincon-bar/ai-wincon-bar.json */
+/** Shared config for Claude Code and Codex integrations. */
 export interface WinconBarConfig {
+  platforms: {
+    claude: boolean;
+    codex: boolean;
+  };
   elements: {
     modelName: boolean;
     progressBar: boolean;
@@ -64,6 +68,14 @@ export interface WinconBarConfig {
     sessionName: boolean;
     /** Session wall-clock duration as `⧗ 00h:42m`, rendered last. */
     sessionTime: boolean;
+    /** Codex-only: include reasoning effort alongside the model. */
+    reasoningEffort: boolean;
+    /** Codex-only native status-line fields. */
+    gitBranch: boolean;
+    fastMode: boolean;
+    permissionProfile: boolean;
+    cumulativeTokens: boolean;
+    codexThemeColors: boolean;
   };
   thresholds: {
     yellow: number;
@@ -71,4 +83,15 @@ export interface WinconBarConfig {
   };
   /** How many days a sessions.json record survives before being pruned. */
   sessionRetentionDays: number;
+  /** State required to safely restore a pre-existing Codex status line. */
+  codexBackup?: CodexStatusLineBackup;
+}
+
+export interface CodexStatusLineBackup {
+  hadStatusLine: boolean;
+  statusLine?: string[];
+  hadUseColors: boolean;
+  useColors?: boolean;
+  appliedStatusLine: string[];
+  appliedUseColors: boolean;
 }

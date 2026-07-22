@@ -7,9 +7,11 @@ import confirm from "@inquirer/confirm";
 import inputNum from "@inquirer/number";
 import type { WinconBarConfig } from "./types.js";
 import { saveConfig, updateSettingsStatusLine, loadConfig, clearCache } from "./config.js";
+import { applyCodexConfig, getCodexSkillPath, getCodexVersion, MIN_CODEX_VERSION, versionAtLeast } from "./codex.js";
 
 /** Путь назначения SKILL.md. Env-overridable (AI_WINCON_BAR_SKILLS_DIR) для тестов. */
-export function getSkillDestPath(): string {
+export function getSkillDestPath(platform: "claude" | "codex" = "claude"): string {
+  if (platform === "codex") return getCodexSkillPath();
   const dir = process.env.AI_WINCON_BAR_SKILLS_DIR
     ?? join(homedir(), ".claude", "skills", "ai-wincon-bar");
   return join(dir, "SKILL.md");
@@ -30,14 +32,20 @@ export function updateSkillFile(destPath: string, srcContent: string): boolean {
 const REFRESH_INTERVAL_SEC = 60;
 
 const ELEMENT_CHOICES = [
-  { name: "Session name (/my-project)", value: "sessionName" },
-  { name: "Model name ([Sonnet 4.6])", value: "modelName" },
-  { name: "Progress bar (▓▓▓░░░)", value: "progressBar" },
-  { name: "Percentage (45%)", value: "percent" },
-  { name: "Tokens (▼:90K ▲:5K ▣:200K)", value: "tokens" },
-  { name: "Tariff / Rate limits (5h: 12%)", value: "tariff" },
-  { name: "Weekly limit (7d: 13%)", value: "tariffWeekly" },
-  { name: "Session time (⧗ 00h:42m)", value: "sessionTime" },
+  { name: "Session name (/my-project) — Claude Code, Codex", value: "sessionName" },
+  { name: "Model name ([Sonnet 4.6]) — Claude Code, Codex", value: "modelName" },
+  { name: "Progress bar (▓▓▓░░░) — Claude Code only", value: "progressBar" },
+  { name: "Context percentage (45%) — Claude Code, Codex", value: "percent" },
+  { name: "Token counters — Claude Code, Codex", value: "tokens" },
+  { name: "5-hour rate limit — Claude Code, Codex", value: "tariff" },
+  { name: "Weekly limit — Claude Code, Codex", value: "tariffWeekly" },
+  { name: "Session time (⧗ 00h:42m) — Claude Code only", value: "sessionTime" },
+  { name: "Reasoning effort — Codex only", value: "reasoningEffort" },
+  { name: "Git branch — Codex only", value: "gitBranch" },
+  { name: "Fast mode — Codex only", value: "fastMode" },
+  { name: "Permission profile — Codex only", value: "permissionProfile" },
+  { name: "Cumulative session tokens — Codex only", value: "cumulativeTokens" },
+  { name: "Theme colors — Codex only", value: "codexThemeColors" },
 ] as const;
 
 /** Путь к bundled SKILL.md либо null, если запущены из исходников (файла рядом нет). */
@@ -55,14 +63,14 @@ function resolveBundledSkillPath(): string | null {
  * the /ai-wincon-bar skill is available inside Claude Code.
  * No-op, если уже установлен или запущены из исходников.
  */
-export function installSkill(): void {
-  const skillDest = getSkillDestPath();
+export function installSkill(platform: "claude" | "codex" = "claude"): void {
+  const skillDest = getSkillDestPath(platform);
   if (existsSync(skillDest)) return;
   const skillSource = resolveBundledSkillPath();
   if (!skillSource) return;
   mkdirSync(dirname(skillDest), { recursive: true });
   writeFileSync(skillDest, readFileSync(skillSource, "utf-8"), "utf-8");
-  console.log("✅ Skill installed to ~/.claude/skills/ai-wincon-bar/SKILL.md");
+  console.log(`✅ Skill installed for ${platform === "claude" ? "Claude Code" : "Codex"}`);
 }
 
 /**
@@ -70,12 +78,13 @@ export function installSkill(): void {
  * No-op, если файл не установлен (установка — через setup), уже актуален, или запущены из исходников.
  */
 export function upgradeSkill(): void {
-  const skillDest = getSkillDestPath();
-  if (!existsSync(skillDest)) return;
   const skillSource = resolveBundledSkillPath();
   if (!skillSource) return;
-  if (updateSkillFile(skillDest, readFileSync(skillSource, "utf-8"))) {
-    console.log("✅ SKILL.md обновлён до актуальной версии");
+  for (const platform of ["claude", "codex"] as const) {
+    const skillDest = getSkillDestPath(platform);
+    if (existsSync(skillDest) && updateSkillFile(skillDest, readFileSync(skillSource, "utf-8"))) {
+      console.log(`✅ SKILL.md updated for ${platform === "claude" ? "Claude Code" : "Codex"}`);
+    }
   }
 }
 
@@ -85,6 +94,20 @@ export async function runSetup(
   const config = existingConfig ?? loadConfig();
 
   console.log("\n🪟 ai-wincon-bar config\n");
+
+  const codexVersion = getCodexVersion();
+  const claudeDetected = existsSync(process.env.AI_WINCON_BAR_SETTINGS_PATH ?? join(homedir(), ".claude", "settings.json"))
+    || existsSync(join(homedir(), ".claude"));
+  const selectedPlatforms = await checkbox({
+    message: "Configure platforms:",
+    choices: [
+      { name: `Claude Code${claudeDetected ? " — detected" : ""}`, value: "claude", checked: existingConfig ? config.platforms.claude : claudeDetected },
+      { name: `Codex${codexVersion ? ` — detected (${codexVersion})` : ""}`, value: "codex", checked: existingConfig ? config.platforms.codex : Boolean(codexVersion) },
+    ],
+    required: true,
+  });
+  const configureClaude = selectedPlatforms.includes("claude");
+  const configureCodex = selectedPlatforms.includes("codex");
 
   // 1. Select elements
   const selectedElements = await checkbox({
@@ -144,6 +167,7 @@ export async function runSetup(
 
   // 4. Build and save config
   const newConfig: WinconBarConfig = {
+    platforms: { claude: configureClaude, codex: configureCodex },
     elements: {
       modelName: selectedElements.includes("modelName"),
       progressBar: selectedElements.includes("progressBar"),
@@ -153,17 +177,34 @@ export async function runSetup(
       tariffWeekly: selectedElements.includes("tariffWeekly"),
       sessionName: selectedElements.includes("sessionName"),
       sessionTime: selectedElements.includes("sessionTime"),
+      reasoningEffort: selectedElements.includes("reasoningEffort"),
+      gitBranch: selectedElements.includes("gitBranch"),
+      fastMode: selectedElements.includes("fastMode"),
+      permissionProfile: selectedElements.includes("permissionProfile"),
+      cumulativeTokens: selectedElements.includes("cumulativeTokens"),
+      codexThemeColors: selectedElements.includes("codexThemeColors"),
     },
     thresholds: { yellow, red },
     sessionRetentionDays,
+    codexBackup: config.codexBackup,
   };
 
-  saveConfig(newConfig);
   clearCache();
-  console.log(`\n✅ Config saved to ~/.claude/ai-wincon-bar/ai-wincon-bar.json`);
+
+  if (configureCodex) {
+    if (!codexVersion || !versionAtLeast(codexVersion)) {
+      console.warn(`\n⚠️ Codex ${MIN_CODEX_VERSION}+ is required; Codex config was not changed.`);
+    } else {
+      newConfig.codexBackup = applyCodexConfig(newConfig);
+      console.log("\n✅ Native Codex status line updated in ~/.codex/config.toml");
+    }
+  }
+
+  saveConfig(newConfig);
+  console.log("✅ Config saved to ~/.config/ai-wincon-bar/ai-wincon-bar.json");
 
   // 5. Update settings.json
-  const shouldUpdateSettings = await confirm({
+  const shouldUpdateSettings = configureClaude && await confirm({
     message: "Update ~/.claude/settings.json to enable the status line?",
     default: true,
   });
@@ -184,13 +225,15 @@ export async function runSetup(
 
   // 6. Install skill
   const shouldInstallSkill = await confirm({
-    message: "Install /ai-wincon-bar skill? This lets you configure the bar from within Claude Code.",
+    message: "Install the ai-wincon-bar chat skill for selected platforms?",
     default: true,
   });
 
   if (shouldInstallSkill) {
-    installSkill();
+    if (configureClaude) installSkill("claude");
+    if (configureCodex) installSkill("codex");
   }
 
-  console.log("\n🎉 Done! Restart Claude Code to see the status bar.\n");
+  const names = [configureClaude && "Claude Code", configureCodex && "Codex"].filter(Boolean).join(" and ");
+  console.log(`\n🎉 Done! Restart ${names} to see the status line.\n`);
 }

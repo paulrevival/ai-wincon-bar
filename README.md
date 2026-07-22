@@ -1,137 +1,72 @@
 # 🪟 ai-wincon-bar
 
-**Context window usage bar for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) status line.**
+**Context-window status lines for Claude Code and Codex.**
 
-```
+Claude Code uses the package's colored renderer:
+
+```text
 /my-project | [Sonnet 4.6] | ▓▓▓▓▓░░░░░ 45% | ▼:90K ▲:5K ▣:200K | 5h: 12% | 7d: 13% | ⧗ 00h:42m
 ```
 
----
+Codex uses its native TUI status line. The setup wizard maps the same common
+switches to native Codex fields and preserves fields it does not recognize.
 
 ## Features
 
-- **Session name** — directory-basename label (`/my-project`) of where Claude was launched
-- **Model name** — current model in brackets (`[Sonnet 4.6]`)
-- **Progress bar** — visual context window fill (`▓▓▓▓▓░░░░░`)
-- **Percentage** — quick glance at usage (`45%`)
-- **Token counter** — input, output and window size (`▼:90K ▲:5K ▣:200K`)
-- **Rate limit indicators** — 5-hour and weekly usage tiers from API (`5h: 12%`, `7d: 13%`)
-- **Session time** — wall-clock duration of the session (`⧗ 00h:42m`)
-- **Color thresholds** — green → yellow → red as you approach the limit
-- **Interactive config** — toggle elements, set thresholds, auto-update settings
-- **Session time report** — `ai-wincon-bar sessions` tabulates wall-clock & API time per day and project
-- **Cache fallback** — smooths brief zero-bursts (e.g. `/compact`) without flicker; per-project, so `/clear` and side-by-side projects never show stale tokens
+- One setup wizard and shared config for Claude Code and Codex
+- Project/session name, model, context percentage, token counters, and limits
+- Claude-only progress bar, threshold colors, session clock, and session report
+- Codex-only reasoning effort, Git branch, fast mode, permission profile,
+  cumulative token counters, and theme colors
+- Safe migration from the legacy Claude-scoped data directory
+- Safe Codex uninstall that restores the previous status line unless it was
+  manually changed after setup
+- Installable chat skill for both platforms
 
-## Quick Start
+## Quick start
 
 ```bash
-# Install globally
 npm install -g @paulrevival/ai-wincon-bar
-
-# Run interactive setup (picks elements, thresholds, updates settings.json)
 ai-wincon-bar config
 ```
 
-Restart Claude Code and the bar appears in your status line.
+The wizard detects installed platforms, lets you choose the targets, and labels
+platform-specific settings. Restart the selected tools afterward. In Codex you
+can also run `/statusline` to inspect the native result.
+
+Codex CLI 0.129.0 or newer is required for Codex integration.
 
 ## Install from source
 
-Install a local build globally instead of pulling from npm:
-
 ```bash
-# from the repository root
-npm install          # install dependencies
-npm run build        # compile src/ → dist/index.js
-npm install -g .     # install the built package globally (ships dist/ + SKILL.md)
+npm install
+npm run build
+npm install -g .
+ai-wincon-bar config
 ```
 
-`ai-wincon-bar` now points at your local build. Run `ai-wincon-bar config` once to refresh settings (it also syncs the installed `SKILL.md`), then restart Claude Code.
-
-**To pick up edits without reinstalling** (rebuild → live):
+For live local development:
 
 ```bash
-npm run build && npm link      # or run `npm run dev` (watch) in another terminal
+npm run build && npm link
 ```
 
 ## Commands
 
 | Command | Description |
 |---|---|
-| `ai-wincon-bar` | Show current config + preview, or run setup wizard |
-| `ai-wincon-bar config` | Interactive setup wizard |
-| `ai-wincon-bar sessions` | Show recorded session times grouped by day (`--today`, `--since`, `--until`) |
-| `ai-wincon-bar uninstall` | Remove config, skill, statusLine entry, and npm package |
-| `ai-wincon-bar help` | Show available commands |
+| `ai-wincon-bar` | Show the current config and previews, or start setup |
+| `ai-wincon-bar config` | Run the interactive setup wizard |
+| `ai-wincon-bar sessions` | Claude-only session report (`--today`, `--since`, `--until`) |
+| `ai-wincon-bar uninstall` | Restore integrations, remove data/skills, uninstall package |
+| `ai-wincon-bar help` | Show command help |
 
-### Session time report
+## Platform integration
 
-While the status line renders, the tool records each session's elapsed time to
-`~/.claude/ai-wincon-bar/sessions.json` (keyed by `session_id`). `ai-wincon-bar
-sessions` reads that log and prints a per-day table, broken down by project, with
-a **wall-clock** column (total session duration, including idle) and an
-**api** column (active time spent waiting on the model):
+### Claude Code
 
-```
-┌───────────────┬─────────┬─────────┬──────────┐
-│ Day / Project │ wall    │ api     │ sessions │
-├───────────────┴─────────┴─────────┴──────────┤
-│ 2026-06-19                                   │
-├───────────────┬─────────┬─────────┬──────────┤
-│ my-project    │ 02h:15m │ 00h:48m │ 3        │
-├───────────────┼─────────┼─────────┼──────────┤
-│ other         │ 00h:40m │ 00h:12m │ 1        │
-├───────────────┼─────────┼─────────┼──────────┤
-│ Day total     │ 02h:55m │ 01h:00m │ 4        │
-└───────────────┴─────────┴─────────┴──────────┘
-```
-
-```bash
-ai-wincon-bar sessions                    # all recorded days
-ai-wincon-bar sessions --today            # only today
-ai-wincon-bar sessions --since 2026-06-01 # from a date (inclusive)
-ai-wincon-bar sessions --until 2026-06-15 # to a date (inclusive)
-```
-
-Recording keys off `cost.total_duration_ms`, so it's most accurate with idle
-refresh enabled (see [`refreshInterval`](#idle-refresh-refreshinterval)). Records
-older than `sessionRetentionDays` (14 days by default, set in the config file or
-via the wizard) are pruned automatically.
-
-## How It Works
-
-Claude Code supports a [custom status line](https://docs.anthropic.com/en/docs/claude-code/settings#status-line) that receives JSON context via stdin and displays the output string. `ai-wincon-bar` acts as that command:
-
-1. Claude Code pipes context window data to stdin on every turn
-2. The tool parses the JSON, applies your config, and renders a formatted bar
-3. The output appears in the bottom status bar of your terminal
-
-### Config File
-
-Stored at `~/.claude/ai-wincon-bar/ai-wincon-bar.json`:
-
-```json
-{
-  "elements": {
-    "modelName": true,
-    "progressBar": true,
-    "percent": true,
-    "tokens": true,
-    "tariff": true,
-    "tariffWeekly": true,
-    "sessionName": true,
-    "sessionTime": true
-  },
-  "thresholds": {
-    "yellow": 50,
-    "red": 80
-  },
-  "sessionRetentionDays": 14
-}
-```
-
-### Settings Integration
-
-During `config`, the tool offers to update `~/.claude/settings.json`:
+Claude Code invokes `ai-wincon-bar` as a status-line command and sends session
+JSON through stdin. Setup writes this block to `~/.claude/settings.json`:
 
 ```json
 {
@@ -143,77 +78,110 @@ During `config`, the tool offers to update `~/.claude/settings.json`:
 }
 ```
 
-### Idle refresh (`refreshInterval`)
+The optional refresh interval keeps the session clock moving while idle. It is
+a local render and consumes no API tokens.
 
-By default Claude Code only re-renders the status line on activity (a new message, `/compact`, etc.), so the **session time** segment freezes while you're idle. The wizard offers to add `refreshInterval` (seconds) to the `statusLine` block, which re-runs the command on a fixed timer — once a minute by default — keeping the clock current even when idle.
+### Codex
 
-This is a **local** re-render (Claude Code pipes the already-known session state to the command): it consumes **no API tokens and no money**, only a negligible process spawn each tick. Omit `refreshInterval` (or decline the wizard prompt) to keep the bar event-driven only.
+Codex owns the rendering. Setup updates only these keys in the global `[tui]`
+section of `~/.codex/config.toml`:
 
-## Claude Code Skill
+```toml
+[tui]
+status_line = ["current-dir", "model-with-reasoning", "git-branch", "context-used", "used-tokens", "context-window-size", "five-hour-limit", "weekly-limit"]
+status_line_use_colors = true
+```
 
-The package bundles a `SKILL.md` that lets you configure the bar directly from a Claude Code chat. `ai-wincon-bar config` offers to install it to `~/.claude/skills/ai-wincon-bar/SKILL.md`.
+Comments, other TOML settings, and unknown/future status-line fields are
+preserved. Codex profiles are not modified. Exact labels, separators, and
+colors are controlled by Codex itself.
 
-Once installed, invoke it via the `/ai-wincon-bar` slash command, or just describe what you want — it also triggers on phrases like "context bar", "status line config", or "wincon":
+## Settings
 
-> Enable the token counter and set the red threshold to 75.
+| Setting | Claude Code | Codex |
+|---|---:|---:|
+| Session name | ✅ | ✅ |
+| Model name | ✅ | ✅ |
+| Context percentage | ✅ | ✅ |
+| Token counters | input/output/window | used/window |
+| 5-hour and weekly limits | ✅ | ✅ |
+| Progress bar | ✅ | — |
+| Session time | ✅ | — |
+| Yellow/red thresholds | ✅ | — |
+| Session retention/report | ✅ | — |
+| Reasoning effort | — | ✅ |
+| Git branch | — | ✅ |
+| Fast mode | — | ✅ |
+| Permission profile | — | optional |
+| Cumulative input/output | — | optional |
+| Theme colors | — | ✅ |
 
-Through the skill you can:
+Common settings use one switch for all selected platforms. Unsupported fields
+are skipped for that platform.
 
-- Show the current config with a live preview
-- Toggle elements and adjust color thresholds
-- Reset to defaults
-- Check whether the status line is active in `settings.json`
-- Fully uninstall the tool (config, cache, skill, statusLine entry, npm package)
+## Shared config and migration
 
-## Configuration Options
+The shared config, cache, and Claude session history live in:
 
-### Elements
+```text
+~/.config/ai-wincon-bar/
+```
 
-Toggle which parts of the bar are visible:
+`XDG_CONFIG_HOME` is respected. `AI_WINCON_BAR_DIR` overrides the complete data
+directory.
 
-| Element | Example | Default |
-|---|---|---|
-| `sessionName` | `/my-project` | ✅ on (hidden when no cwd) |
-| `modelName` | `[Sonnet 4.6]` | ✅ on (hidden when model data unavailable) |
-| `progressBar` | `▓▓▓▓▓░░░░░` | ✅ on |
-| `percent` | `45%` | ✅ on |
-| `tokens` | `▼:90K ▲:5K ▣:200K` | ✅ on |
-| `tariff` | `5h: 12%` | ✅ on (hidden when no 5h rate limit data) |
-| `tariffWeekly` | `7d: 13%` | ✅ on (hidden when no 7d rate limit data) |
-| `sessionTime` | `⧗ 00h:42m` | ✅ on (hidden when no duration data) |
+On first use, an existing `~/.claude/ai-wincon-bar` config, cache, and sessions
+file are copied into the shared directory. The originals are retained so an
+older package version can still be used after rollback. No migration occurs
+when `AI_WINCON_BAR_DIR` is set.
 
-### Thresholds
+## Claude session report
 
-Control when colors change:
-
-| Threshold | Default | Effect |
-|---|---|---|
-| `yellow` | `50` | Bar, percent and tariffs turn yellow at 50% |
-| `red` | `80` | Bar, percent and tariffs turn red at 80% |
-
-## Custom Config Directory
-
-By default, config and cache live in `~/.claude/ai-wincon-bar/`. Set `AI_WINCON_BAR_DIR` to use a different directory:
+Claude's status-line payload includes wall-clock and API duration counters. The
+renderer records their per-session deltas, and the report groups them by local
+day and project:
 
 ```bash
-export AI_WINCON_BAR_DIR=/path/to/custom/dir
+ai-wincon-bar sessions
+ai-wincon-bar sessions --today
+ai-wincon-bar sessions --since 2026-06-01 --until 2026-06-15
 ```
+
+Codex does not invoke this package while rendering its native line, so Codex
+sessions are intentionally excluded. The tool does not depend on Codex's
+internal JSONL format.
+
+## Chat skill
+
+Setup can install the bundled skill into either or both locations:
+
+```text
+~/.claude/skills/ai-wincon-bar/SKILL.md
+~/.codex/skills/ai-wincon-bar/SKILL.md
+```
+
+The skill delegates configuration to the CLI so JSON and TOML safety rules stay
+consistent.
+
+## Uninstall behavior
+
+The installer records the pre-existing Codex status-line values. During
+uninstall it restores them only when the current values still match the last
+values written by ai-wincon-bar. Later manual edits are left untouched.
+
+Claude's `statusLine` is removed only if its command still points to
+`ai-wincon-bar`.
 
 ## Development
 
 ```bash
-git clone https://github.com/paulrevival/ai-wincon-bar.git
-cd ai-wincon-bar
 npm install
-npm run build   # compile to dist/
-npm test        # run test suite (vitest)
-npm run dev     # watch mode
+npm run lint
+npm test
+npm run build
 ```
 
-## Requirements
-
-- Node.js ≥ 18
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+Requirements: Node.js 18+, Claude Code and/or Codex CLI 0.129.0+.
 
 ## License
 

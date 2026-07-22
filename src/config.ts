@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { WinconBarConfig } from "./types.js";
@@ -9,7 +9,28 @@ import { readRecentCompactPostTokens } from "./compact.js";
 
 /** Base directory for all ai-wincon-bar data (config, cache). */
 function getDataDir(): string {
-  return process.env.AI_WINCON_BAR_DIR ?? join(homedir(), ".claude", "ai-wincon-bar");
+  if (process.env.AI_WINCON_BAR_DIR) return process.env.AI_WINCON_BAR_DIR;
+  const configHome = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+  return join(configHome, "ai-wincon-bar");
+}
+
+export function getLegacyDataDir(): string {
+  return process.env.AI_WINCON_BAR_LEGACY_DIR ?? join(homedir(), ".claude", "ai-wincon-bar");
+}
+
+/** Copy legacy Claude-scoped data once; originals stay in place for rollback. */
+export function migrateLegacyData(): boolean {
+  if (process.env.AI_WINCON_BAR_DIR || existsSync(getConfigPath())) return false;
+  const legacyDir = getLegacyDataDir();
+  const legacyConfig = join(legacyDir, CONFIG_FILENAME);
+  if (!existsSync(legacyConfig)) return false;
+  ensureDataDir();
+  for (const name of [CONFIG_FILENAME, "cache.json", "sessions.json"]) {
+    const source = join(legacyDir, name);
+    const destination = join(getDataDir(), name);
+    if (existsSync(source) && !existsSync(destination)) copyFileSync(source, destination);
+  }
+  return true;
 }
 
 /** Ensure the data directory exists. */
@@ -211,10 +232,11 @@ function resolveRetentionDays(value: unknown): number {
 }
 
 /**
- * Load config from ~/.claude/ai-wincon-bar/ai-wincon-bar.json, merging with defaults.
+ * Load the shared ai-wincon-bar config, merging with defaults.
  * Returns DEFAULT_CONFIG if file doesn't exist or is malformed.
  */
 export function loadConfig(): WinconBarConfig {
+  migrateLegacyData();
   const configPath = getConfigPath();
   if (!existsSync(configPath)) {
     return { ...DEFAULT_CONFIG };
@@ -223,6 +245,10 @@ export function loadConfig(): WinconBarConfig {
     const raw = readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(raw) as Partial<WinconBarConfig>;
     return {
+      platforms: {
+        ...DEFAULT_CONFIG.platforms,
+        ...parsed.platforms,
+      },
       elements: {
         ...DEFAULT_CONFIG.elements,
         ...parsed.elements,
@@ -232,6 +258,7 @@ export function loadConfig(): WinconBarConfig {
         ...parsed.thresholds,
       },
       sessionRetentionDays: resolveRetentionDays(parsed.sessionRetentionDays),
+      ...(parsed.codexBackup ? { codexBackup: parsed.codexBackup } : {}),
     };
   } catch {
     return { ...DEFAULT_CONFIG };
@@ -239,7 +266,7 @@ export function loadConfig(): WinconBarConfig {
 }
 
 /**
- * Save config to ~/.claude/ai-wincon-bar/ai-wincon-bar.json.
+ * Save the shared ai-wincon-bar config.
  */
 export function saveConfig(config: WinconBarConfig): void {
   ensureDataDir();

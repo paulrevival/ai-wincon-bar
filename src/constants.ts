@@ -7,6 +7,7 @@ export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export const DEFAULT_SESSION_RETENTION_DAYS = 14;
 
 export const DEFAULT_CONFIG: WinconBarConfig = {
+  platforms: { claude: true, codex: true },
   elements: {
     modelName: true,
     progressBar: true,
@@ -16,6 +17,12 @@ export const DEFAULT_CONFIG: WinconBarConfig = {
     tariffWeekly: true,
     sessionName: true,
     sessionTime: true,
+    reasoningEffort: true,
+    gitBranch: true,
+    fastMode: true,
+    permissionProfile: false,
+    cumulativeTokens: false,
+    codexThemeColors: true,
   },
   thresholds: {
     yellow: 50,

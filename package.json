@@ -1,7 +1,7 @@
 {
   "name": "@paulrevival/ai-wincon-bar",
   "version": "0.1.0",
-  "description": "Context window usage bar for Claude Code status line",
+  "description": "Context window status line configurator for Claude Code and Codex",
   "type": "module",
   "bin": {
     "ai-wincon-bar": "dist/index.js"
@@ -36,6 +36,7 @@
   "keywords": [
     "claude",
     "claude-code",
+    "codex",
     "statusline",
     "context-window",
     "ai"

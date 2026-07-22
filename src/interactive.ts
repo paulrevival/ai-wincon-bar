@@ -1,6 +1,7 @@
 import { loadConfig, isConfigured } from "./config.js";
 import { renderStatusLine } from "./render.js";
 import { runSetup, upgradeSkill } from "./setup.js";
+import { codexItemsForConfig } from "./codex.js";
 import type { ClaudeStatusInput } from "./types.js";
 
 /**
@@ -34,8 +35,13 @@ export async function handleInteractive(): Promise<void> {
         seven_day: { used_percentage: 13, resets_at: 0 },
       },
     };
-    console.log("\nPreview:");
+    console.log("\nClaude Code preview:");
     console.log(renderStatusLine(sampleInput, config));
+    if (config.platforms.codex) {
+      console.log("\nCodex native status line fields:");
+      console.log(codexItemsForConfig(config).join(" · "));
+      console.log("Restart Codex or run /statusline to inspect the native rendering.");
+    }
 
     const { default: askConfirm } = await import("@inquirer/confirm");
     const shouldReconfigure = await askConfirm({
